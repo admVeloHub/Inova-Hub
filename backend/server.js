@@ -784,10 +784,23 @@ app.delete('/api/velo-news/:id', async (req, res) => {
 
 // ===== API DE FEED SOCIAL (YouTube e Instagram) =====
 
+// Cache para vídeos do YouTube (evitar múltiplas requisições)
+const youtubeCache = {
+  data: null,
+  timestamp: null,
+  ttl: 30 * 60 * 1000 // 30 minutos
+};
+
 // GET /api/feed/youtube - Buscar vídeos do canal YouTube
 app.get('/api/feed/youtube', async (req, res) => {
   try {
     console.log('📹 [YOUTUBE FEED] Requisição recebida');
+    
+    // Verificar cache
+    if (youtubeCache.data && youtubeCache.timestamp && (Date.now() - youtubeCache.timestamp) < youtubeCache.ttl) {
+      console.log('📹 [YOUTUBE FEED] Retornando dados do cache');
+      return res.json({ success: true, data: youtubeCache.data, cached: true });
+    }
     const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || config.YOUTUBE_API_KEY;
     const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || config.YOUTUBE_CHANNEL_ID;
     const YOUTUBE_USERNAME = process.env.YOUTUBE_USERNAME || config.YOUTUBE_USERNAME || '@canalvelotax'; // Username do canal
