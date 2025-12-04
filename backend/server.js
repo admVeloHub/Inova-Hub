@@ -119,7 +119,7 @@ const PORT = process.env.PORT || 8090;
 app.use(cors({
   origin: [
     'https://app.velohub.velotax.com.br', // NOVO DOMÍNIO PERSONALIZADO
-    process.env.CORS_ORIGIN || 'https://velohub-278491073220.us-east1.run.app',
+    process.env.CORS_ORIGIN || 'https://velohub-main-staging-278491073220.us-east1.run.app',
     'http://localhost:8080', // Frontend padrão (regra estabelecida)
     'http://localhost:3000', // Compatibilidade
     'http://localhost:5000'  // Compatibilidade
