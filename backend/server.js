@@ -930,63 +930,64 @@ app.get('/api/feed/youtube', async (req, res) => {
   }
 });
 
-// GET /api/feed/instagram - Buscar postagens do Instagram
+// GET /api/feed/instagram - Buscar postagens do Instagram (sem API, usando embed)
 app.get('/api/feed/instagram', async (req, res) => {
+  // Instagram sem API - retornar link direto para o perfil
+  // O frontend pode usar embed direto ou link para o perfil
+  res.json({
+    success: true,
+    data: [
+      {
+        id: 'instagram-profile',
+        type: 'instagram',
+        username: 'velo_tax',
+        profileUrl: 'https://www.instagram.com/velo_tax/',
+        message: 'Acesse o perfil do Instagram para ver as postagens'
+      }
+    ]
+  });
+});
+
+// POST /api/feed/youtube/like - Dar like em vídeo do YouTube
+app.post('/api/feed/youtube/like', async (req, res) => {
   try {
-    const INSTAGRAM_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
-    const INSTAGRAM_USER_ID = process.env.INSTAGRAM_USER_ID;
-    
-    if (!INSTAGRAM_ACCESS_TOKEN || !INSTAGRAM_USER_ID) {
-      console.warn('⚠️ Instagram Access Token não configurado - retornando dados mock');
-      // Retornar dados mock para desenvolvimento
-      return res.json({
-        success: true,
-        data: [
-          {
-            id: 'mock-instagram-1',
-            type: 'instagram',
-            mediaUrl: 'https://via.placeholder.com/500',
-            caption: 'Post exemplo do Instagram da Velotax',
-            timestamp: new Date().toISOString()
-          }
-        ]
+    const { videoId } = req.body;
+    const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+
+    if (!videoId) {
+      return res.status(400).json({
+        success: false,
+        message: 'videoId é obrigatório'
       });
     }
 
-    // Buscar postagens do Instagram usando Graph API
-    const instagramUrl = `https://graph.instagram.com/${INSTAGRAM_USER_ID}/media?fields=id,caption,media_type,media_url,thumbnail_url,timestamp,permalink&access_token=${INSTAGRAM_ACCESS_TOKEN}&limit=50`;
-    const instagramResponse = await fetch(instagramUrl);
-    const instagramData = await instagramResponse.json();
-
-    if (!instagramData.data || instagramData.data.length === 0) {
+    if (!YOUTUBE_API_KEY) {
+      // Sem API key, apenas retornar sucesso (like local)
       return res.json({
         success: true,
-        data: []
+        message: 'Like registrado localmente (API não configurada)',
+        videoId: videoId
       });
     }
 
-    // Processar postagens
-    const processedPosts = instagramData.data.map(item => ({
-      id: item.id,
-      type: 'instagram',
-      mediaUrl: item.media_url || item.thumbnail_url || '',
-      imageUrl: item.media_url || item.thumbnail_url || '',
-      caption: item.caption || '',
-      timestamp: item.timestamp || new Date().toISOString(),
-      permalink: item.permalink || ''
-    }));
+    // Nota: A API do YouTube não permite dar like diretamente sem autenticação OAuth do usuário
+    // Por isso, vamos apenas registrar o like localmente e redirecionar para o YouTube
+    // O usuário pode dar like diretamente no YouTube ao assistir o vídeo
+
+    console.log(`👍 Like registrado para vídeo: ${videoId}`);
 
     res.json({
       success: true,
-      data: processedPosts
+      message: 'Like registrado. Para curtir no YouTube, acesse o vídeo diretamente.',
+      videoId: videoId,
+      youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`
     });
   } catch (error) {
-    console.error('❌ Erro ao buscar postagens do Instagram:', error);
+    console.error('❌ Erro ao registrar like:', error);
     res.status(500).json({
       success: false,
-      message: 'Erro ao buscar postagens do Instagram',
-      error: error.message,
-      data: []
+      message: 'Erro ao registrar like',
+      error: error.message
     });
   }
 });
