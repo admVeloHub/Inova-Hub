@@ -1057,6 +1057,13 @@ app.get('/api/feed/youtube/oauth', async (req, res) => {
       console.log(`🔗 Auth URL gerada: ${authUrl.substring(0, 100)}...`);
       console.log('⚠️ IMPORTANTE: Verifique se o redirect URI está EXATAMENTE assim no Google Cloud Console:');
       console.log(`   ${callbackUrl}`);
+      console.log('📋 URL completa que deve estar no Google Console:');
+      console.log(`   ${callbackUrl}`);
+      console.log('🔍 Verificações:');
+      console.log(`   - Deve começar com https:// (não http://)`);
+      console.log(`   - Deve ser: ${callbackUrl}`);
+      console.log(`   - Sem porta (não :8090 ou :8080)`);
+      console.log(`   - Caminho completo: /api/feed/youtube/oauth/callback`);
     } catch (error) {
       console.error('❌ Erro ao gerar Auth URL:', error);
       return res.status(500).json({
