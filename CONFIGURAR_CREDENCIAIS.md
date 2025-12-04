@@ -11,9 +11,9 @@ As credenciais OAuth **NÃO devem ser commitadas no Git**. Configure via variáv
 Crie um arquivo `.env` na pasta `backend/`:
 
 ```env
-GOOGLE_CLIENT_ID=866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
-YOUTUBE_API_KEY=AIzaSyD3G5iZv_3bx_q5pNphhRyKIsVRBo0Jwtk
+GOOGLE_CLIENT_ID=seu-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-seu-secret-aqui
+YOUTUBE_API_KEY=sua-api-key-aqui
 INOVA_HUB_API_URL=http://localhost:8090
 ```
 
@@ -26,11 +26,12 @@ GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || 'seu-client-id-aqui',
 GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || 'seu-secret-aqui',
 ```
 
-## ✅ Credenciais Atuais
+## ✅ Onde Obter as Credenciais
 
-- **Client ID**: `866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com`
-- **Client Secret**: `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`
-- **YouTube API Key**: `AIzaSyD3G5iZv_3bx_q5pNphhRyKIsVRBo0Jwtk`
+1. **Google Cloud Console**: https://console.cloud.google.com/apis/credentials
+   - Client ID e Client Secret do OAuth 2.0
+2. **YouTube Data API**: https://console.cloud.google.com/apis/library/youtube.googleapis.com
+   - API Key para acessar dados do YouTube
 
 ## 🔒 Segurança
 
