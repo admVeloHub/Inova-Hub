@@ -12,14 +12,14 @@ const config = {
   
   // Google OAuth (para autenticação YouTube e SSO)
   // Configurado em: https://console.cloud.google.com/apis/credentials
-  // IMPORTANTE: Adicionar redirect URI local: http://localhost:8090/api/feed/youtube/oauth/callback
-  // Configure via variáveis de ambiente: GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
-  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+  // Redirect URI de produção: https://velohub-278491073220.us-east1.run.app/api/feed/youtube/oauth/callback
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com',
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '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',
   
   // INOVA_HUB_API_URL (para callbacks OAuth)
   // URL base da API - usado para callbacks do OAuth
-  INOVA_HUB_API_URL: process.env.INOVA_HUB_API_URL || 'http://localhost:8090',
+  // PRODUÇÃO: https://velohub-278491073220.us-east1.run.app
+  INOVA_HUB_API_URL: process.env.INOVA_HUB_API_URL || 'https://velohub-278491073220.us-east1.run.app',
   
   // APIs de IA (opcional para testes de tickets)
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'sk-your-openai-key-here',

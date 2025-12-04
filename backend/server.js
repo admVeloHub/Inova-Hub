@@ -1090,7 +1090,10 @@ app.get('/api/feed/youtube/oauth/callback', async (req, res) => {
     const userId = state;
 
     if (!code) {
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/feed?error=oauth_cancelled`);
+      const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' 
+        ? 'https://velohub-278491073220.us-east1.run.app' 
+        : 'http://localhost:8080');
+      return res.redirect(`${frontendUrl}/feed?error=oauth_cancelled`);
     }
 
     const oauth2Client = getOAuth2Client();
@@ -1106,10 +1109,16 @@ app.get('/api/feed/youtube/oauth/callback', async (req, res) => {
     console.log(`✅ OAuth do YouTube autorizado para usuário: ${userId}`);
 
     // Redirecionar para o frontend
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/feed?oauth_success=true`);
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' 
+      ? 'https://velohub-278491073220.us-east1.run.app' 
+      : 'http://localhost:8080');
+    res.redirect(`${frontendUrl}/feed?oauth_success=true`);
   } catch (error) {
     console.error('❌ Erro no callback OAuth:', error);
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/feed?error=oauth_failed`);
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' 
+      ? 'https://velohub-278491073220.us-east1.run.app' 
+      : 'http://localhost:8080');
+    res.redirect(`${frontendUrl}/feed?error=oauth_failed`);
   }
 });
 
