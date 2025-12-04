@@ -20,9 +20,9 @@ Configure estas variáveis de ambiente no Google Cloud Run:
 Na seção **Variáveis e segredos**, adicione:
 
 ```
-GOOGLE_CLIENT_ID=866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
-YOUTUBE_API_KEY=AIzaSyD3G5iZv_3bx_q5pNphhRyKIsVRBo0Jwtk
+GOOGLE_CLIENT_ID=seu-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-seu-secret-aqui
+YOUTUBE_API_KEY=sua-api-key-aqui
 INOVA_HUB_API_URL=https://velohub-278491073220.us-east1.run.app
 NODE_ENV=production
 ```
@@ -40,7 +40,7 @@ Após o deploy, os logs devem mostrar:
 
 ```
 🔧 [OAUTH2 CLIENT] Criando cliente:
-  - Client ID: 866929285541-eooa...
+  - Client ID: [seu-client-id]...
   - Client Secret: ***CONFIGURADO***
   - Base URL: https://velohub-278491073220.us-east1.run.app
   - Callback URL: https://velohub-278491073220.us-east1.run.app/api/feed/youtube/oauth/callback
