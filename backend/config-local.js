@@ -10,9 +10,17 @@ const config = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: process.env.PORT || 8090,
   
-  // Google OAuth
+  // Google OAuth (para autenticação YouTube e SSO)
+  // Obter em: https://console.cloud.google.com/apis/credentials
+  // 1. Criar OAuth 2.0 Client ID (tipo: Aplicativo da Web)
+  // 2. Adicionar URI de redirecionamento: http://localhost:8090/api/feed/youtube/oauth/callback
+  // 3. Copiar Client ID e Client Secret
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '278491073220-eb4ogvn3aifu0ut9mq3rvu5r9r9l3137.apps.googleusercontent.com',
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || 'your-google-client-secret-here',
+  
+  // INOVA_HUB_API_URL (para callbacks OAuth)
+  // URL base da API - usado para callbacks do OAuth
+  INOVA_HUB_API_URL: process.env.INOVA_HUB_API_URL || 'http://localhost:8090',
   
   // APIs de IA (opcional para testes de tickets)
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'sk-your-openai-key-here',
