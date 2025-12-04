@@ -1157,6 +1157,70 @@ app.get('/api/feed/youtube/oauth/status', async (req, res) => {
   }
 });
 
+// GET /api/feed/youtube/oauth/debug - Debug da configuração OAuth
+app.get('/api/feed/youtube/oauth/debug', async (req, res) => {
+  try {
+    const clientId = config.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = config.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+    const baseUrl = config.INOVA_HUB_API_URL || process.env.INOVA_HUB_API_URL || 'http://localhost:8090';
+    const callbackUrl = `${baseUrl}/api/feed/youtube/oauth/callback`;
+    
+    // Criar cliente temporário para verificar a URL
+    const oauth2Client = new google.auth.OAuth2(
+      clientId,
+      clientSecret,
+      callbackUrl
+    );
+    
+    const testAuthUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: ['https://www.googleapis.com/auth/youtube.force-ssl'],
+      state: 'test',
+      prompt: 'consent'
+    });
+    
+    // Extrair redirect_uri da URL gerada
+    const urlObj = new URL(testAuthUrl);
+    const redirectUriParam = urlObj.searchParams.get('redirect_uri');
+    
+    res.json({
+      success: true,
+      config: {
+        clientId: clientId ? `${clientId.substring(0, 30)}...` : '❌ NÃO CONFIGURADO',
+        hasClientSecret: !!clientSecret,
+        baseUrl: baseUrl,
+        callbackUrl: callbackUrl,
+        callbackUrlLength: callbackUrl.length,
+        callbackUrlEncoded: encodeURIComponent(callbackUrl)
+      },
+      generated: {
+        authUrl: testAuthUrl.substring(0, 200) + '...',
+        redirectUriInUrl: redirectUriParam,
+        redirectUriDecoded: redirectUriParam ? decodeURIComponent(redirectUriParam) : null
+      },
+      instructions: {
+        message: 'Esta URL DEVE estar no Google Cloud Console:',
+        exactUrl: callbackUrl,
+        checkList: [
+          `✅ URL deve ser EXATAMENTE: ${callbackUrl}`,
+          `✅ Sem espaços antes ou depois`,
+          `✅ Sem barra no final`,
+          `✅ Começa com https://`,
+          `✅ Sem porta (:8090 ou :8080)`,
+          `✅ Caminho completo: /api/feed/youtube/oauth/callback`
+        ]
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erro no debug OAuth:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // POST /api/feed/youtube/like - Dar like em vídeo do YouTube (OFICIAL)
 app.post('/api/feed/youtube/like', async (req, res) => {
   try {
