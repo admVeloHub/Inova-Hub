@@ -1099,7 +1099,7 @@ app.post('/api/feed/youtube/like', async (req, res) => {
         success: false,
         message: 'Autenticação necessária. Por favor, autorize o acesso ao YouTube.',
         requiresAuth: true,
-        authUrl: `${API_BASE_URL || 'http://localhost:8090'}/api/feed/youtube/oauth?userId=${userId}`
+        authUrl: `${config.INOVA_HUB_API_URL || 'http://localhost:8090'}/api/feed/youtube/oauth?userId=${userId}`
       });
     }
 
@@ -1176,7 +1176,7 @@ app.post('/api/feed/youtube/like', async (req, res) => {
             success: false,
             message: 'Token expirado. Por favor, reautorize o acesso.',
             requiresAuth: true,
-            authUrl: `${API_BASE_URL || 'http://localhost:8090'}/api/feed/youtube/oauth?userId=${userId}`
+            authUrl: `${config.INOVA_HUB_API_URL || 'http://localhost:8090'}/api/feed/youtube/oauth?userId=${userId}`
           });
         }
       } else {
