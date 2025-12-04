@@ -885,6 +885,27 @@ app.get('/api/feed/youtube', async (req, res) => {
       
       if (videosData.error) {
         console.error('❌ [YOUTUBE FEED] Erro da API do YouTube:', videosData.error);
+        
+        // Se for erro de quota, retornar cache se disponível
+        if (videosData.error.code === 403 && videosData.error.errors?.[0]?.reason === 'quotaExceeded') {
+          console.error('❌ [YOUTUBE FEED] QUOTA EXCEDIDA!');
+          if (youtubeCache.data && youtubeCache.timestamp) {
+            console.warn('⚠️ [YOUTUBE FEED] Retornando dados do cache devido à quota excedida');
+            return res.json({ 
+              success: true, 
+              data: youtubeCache.data, 
+              cached: true, 
+              warning: 'Quota excedida, usando cache' 
+            });
+          }
+          return res.status(503).json({
+            success: false,
+            error: 'Quota da API do YouTube excedida',
+            message: 'A quota diária da API do YouTube foi excedida. Tente novamente mais tarde ou configure uma nova API Key.',
+            quotaExceeded: true
+          });
+        }
+        
         return res.status(500).json({ 
           success: false, 
           error: videosData.error.message || 'Erro ao buscar vídeos',
@@ -920,6 +941,9 @@ app.get('/api/feed/youtube', async (req, res) => {
         };
       });
 
+      // Salvar no cache
+      youtubeCache.data = processedVideos;
+      youtubeCache.timestamp = Date.now();
       return res.json({ success: true, data: processedVideos });
     }
 
@@ -960,12 +984,28 @@ app.get('/api/feed/youtube', async (req, res) => {
       };
     });
 
+    // Salvar no cache
+    youtubeCache.data = processedVideos;
+    youtubeCache.timestamp = Date.now();
+    
     res.json({
       success: true,
       data: processedVideos
     });
   } catch (error) {
-    console.error('❌ Erro ao buscar vídeos do YouTube:', error);
+    console.error('❌ [YOUTUBE FEED] Erro ao buscar vídeos do YouTube:', error);
+    
+    // Se houver cache, retornar cache mesmo com erro
+    if (youtubeCache.data && youtubeCache.timestamp) {
+      console.warn('⚠️ [YOUTUBE FEED] Erro na API, retornando dados do cache');
+      return res.json({ 
+        success: true, 
+        data: youtubeCache.data, 
+        cached: true, 
+        error: 'API error, using cache' 
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Erro ao buscar vídeos do YouTube',
