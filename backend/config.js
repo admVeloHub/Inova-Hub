@@ -59,7 +59,7 @@ module.exports = {
   // URL do Inova-Hub API (para webhooks e callbacks do WhatsApp)
   // Usado pelo serviço WhatsApp para chamar endpoints de auto-status
   INOVA_HUB_API_URL: process.env.INOVA_HUB_API_URL || (process.env.NODE_ENV === 'production' 
-    ? 'https://velohub-278491073220.us-east1.run.app' 
+    ? 'https://velohub-main-staging-278491073220.us-east1.run.app' 
     : 'http://localhost:8090'),
   
   // Cache timeout para dados do chatbot (em ms)

@@ -19,8 +19,8 @@ const config = {
   
   // INOVA_HUB_API_URL (para callbacks OAuth)
   // URL base da API - usado para callbacks do OAuth
-  // PRODUÇÃO: https://velohub-278491073220.us-east1.run.app
-  INOVA_HUB_API_URL: process.env.INOVA_HUB_API_URL || 'https://velohub-278491073220.us-east1.run.app',
+  // PRODUÇÃO: https://velohub-main-staging-278491073220.us-east1.run.app
+  INOVA_HUB_API_URL: process.env.INOVA_HUB_API_URL || 'https://velohub-main-staging-278491073220.us-east1.run.app',
   
   // APIs de IA (opcional para testes de tickets)
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'sk-your-openai-key-here',

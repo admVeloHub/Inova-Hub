@@ -1117,13 +1117,13 @@ app.get('/api/feed/youtube/oauth/callback', async (req, res) => {
 
     // Redirecionar para o frontend
     const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' 
-      ? 'https://velohub-278491073220.us-east1.run.app' 
+      ? 'https://velohub-main-staging-278491073220.us-east1.run.app' 
       : 'http://localhost:8080');
     res.redirect(`${frontendUrl}/feed?oauth_success=true`);
   } catch (error) {
     console.error('❌ Erro no callback OAuth:', error);
     const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' 
-      ? 'https://velohub-278491073220.us-east1.run.app' 
+      ? 'https://velohub-main-staging-278491073220.us-east1.run.app' 
       : 'http://localhost:8080');
     res.redirect(`${frontendUrl}/feed?error=oauth_failed`);
   }
