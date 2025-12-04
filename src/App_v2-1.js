@@ -946,6 +946,37 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
       return null;
     };
 
+    // Função para obter URL do thumbnail do YouTube
+    const getYouTubeThumbnail = (news) => {
+      if (!news.videos || !Array.isArray(news.videos) || news.videos.length === 0) {
+        return null;
+      }
+      
+      // Procurar vídeo do YouTube
+      const youtubeVideo = news.videos.find(v => v.type === 'youtube' || v.embed || v.url);
+      if (!youtubeVideo) return null;
+      
+      // Extrair ID do YouTube
+      const url = youtubeVideo.url || youtubeVideo.embed || '';
+      const videoIdMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      if (!videoIdMatch || !videoIdMatch[1]) return null;
+      
+      const videoId = videoIdMatch[1];
+      return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    };
+
+    // Função para obter URL do embed do YouTube
+    const getYouTubeEmbedUrl = (news) => {
+      if (!news.videos || !Array.isArray(news.videos) || news.videos.length === 0) {
+        return null;
+      }
+      
+      const youtubeVideo = news.videos.find(v => v.type === 'youtube' || v.embed || v.url);
+      if (!youtubeVideo) return null;
+      
+      return youtubeVideo.embed || youtubeVideo.url || null;
+    };
+
     // Função para renderizar status do módulo
     const renderModuleStatus = (moduleKey, moduleName, title) => {
         const status = moduleStatus[moduleKey];
@@ -1594,22 +1625,66 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                                         </div>
                                     </div>
                                     
-                                    {/* Renderizar primeira imagem se existir */}
-                                    {getImageUrl(news) && (
-                                        <div className="mb-3">
-                                            <img 
-                                                src={getImageUrl(news)} 
-                                                alt={news.title}
-                                                className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                                style={{
-                                                    maxHeight: '300px',
-                                                    objectFit: 'cover',
-                                                    border: isCritical && !shouldRemoveHighlight ? '2px solid #ef4444' : '1px solid #e5e7eb'
-                                                }}
-                                                onClick={() => setExpandedImage(getImageUrl(news))}
-                                            />
+                                    {/* Renderizar primeira imagem ou vídeo se existir */}
+                                    {getImageUrl(news) ? (
+                                        <div className="mb-3 flex justify-center">
+                                            <div className="relative" style={{ 
+                                                maxWidth: '450px', 
+                                                width: '100%',
+                                                borderRadius: '8px',
+                                                overflow: 'hidden',
+                                                border: isCritical && !shouldRemoveHighlight ? '2px solid #ef4444' : '1px solid #e5e7eb'
+                                            }}>
+                                                <img 
+                                                    src={getImageUrl(news)} 
+                                                    alt={news.title}
+                                                    className="w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                                                    style={{
+                                                        maxHeight: '180px',
+                                                        width: '100%',
+                                                        objectFit: 'cover',
+                                                        display: 'block'
+                                                    }}
+                                                    onClick={() => setExpandedImage(getImageUrl(news))}
+                                                />
+                                            </div>
                                         </div>
-                                    )}
+                                    ) : getYouTubeThumbnail(news) ? (
+                                        <div className="mb-3 flex justify-center">
+                                            <div className="relative" style={{ 
+                                                maxWidth: '450px', 
+                                                width: '100%',
+                                                borderRadius: '8px',
+                                                overflow: 'hidden',
+                                                border: isCritical && !shouldRemoveHighlight ? '2px solid #ef4444' : '1px solid #e5e7eb'
+                                            }}>
+                                                <div 
+                                                    className="relative cursor-pointer hover:opacity-90 transition-opacity"
+                                                    onClick={handleReadMore}
+                                                >
+                                                    <img 
+                                                        src={getYouTubeThumbnail(news)} 
+                                                        alt={`${news.title} - Vídeo`}
+                                                        className="w-full h-auto"
+                                                        style={{
+                                                            maxHeight: '180px',
+                                                            width: '100%',
+                                                            objectFit: 'cover',
+                                                            display: 'block'
+                                                        }}
+                                                    />
+                                                    {/* Overlay com ícone de play */}
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-40 transition-opacity">
+                                                        <div className="bg-white bg-opacity-90 rounded-full p-3 shadow-lg">
+                                                            <svg className="w-10 h-10 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M8 5v14l11-7z"/>
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : null}
                                     
                                     <div 
                                         className={`text-gray-600 dark:text-gray-400 line-clamp-3 mb-2 prose prose-sm dark:prose-invert max-w-none ${isSolved ? 'solved-news-content' : ''}`}
