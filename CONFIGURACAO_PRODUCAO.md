@@ -3,9 +3,10 @@
 ## 🔧 Configuração Aplicada
 
 ### Credenciais OAuth
-- **Client ID**: `866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com`
-- **Client Secret**: `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`
-- **YouTube API Key**: `AIzaSyD3G5iZv_3bx_q5pNphhRyKIsVRBo0Jwtk`
+Configure via variáveis de ambiente no serviço de hospedagem (Google Cloud Run):
+- **GOOGLE_CLIENT_ID**: Seu Client ID OAuth
+- **GOOGLE_CLIENT_SECRET**: Seu Client Secret OAuth
+- **YOUTUBE_API_KEY**: Sua API Key do YouTube
 
 ### URLs Configuradas
 - **API URL (Produção)**: `https://velohub-278491073220.us-east1.run.app`
