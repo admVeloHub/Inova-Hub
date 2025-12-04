@@ -37,9 +37,14 @@ const FeedPage = () => {
         
         setShorts(shortsList);
         setFeedItems(normalVideos);
+      } else {
+        console.warn('⚠️ Resposta do YouTube sem dados:', youtubeData);
+        setFeedItems([]);
+        setShorts([]);
       }
     } catch (error) {
-      console.error('Erro ao carregar feed:', error);
+      console.error('❌ Erro ao carregar feed:', error);
+      console.error('URL tentada:', `${API_BASE_URL}/feed/youtube`);
       setFeedItems([]);
       setShorts([]);
     } finally {

@@ -40,11 +40,11 @@ export const getApiBaseUrl = () => {
     }
     
     // Fallback para URL padrão online
-    return 'https://velohub-278491073220.us-east1.run.app/api';
+    return 'https://velohub-main-staging-278491073220.us-east1.run.app/api';
   }
   
   // Fallback para server-side rendering - sempre URL online
-  return 'https://velohub-278491073220.us-east1.run.app/api';
+  return 'https://velohub-main-staging-278491073220.us-east1.run.app/api';
 };
 
 /**
