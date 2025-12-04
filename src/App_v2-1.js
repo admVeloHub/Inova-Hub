@@ -14,6 +14,7 @@ import Chatbot from './components/Chatbot';
 import SupportModal from './components/SupportModal';
 import EscalacoesPage from './pages/EscalacoesPage';
 import VeloNewsAdmin from './pages/VeloNewsAdmin';
+import FeedPage from './pages/FeedPage';
 import { formatArticleContent, formatPreviewText, formatResponseText } from './utils/textFormatter';
 
 // Sistema de gerenciamento de estado para modal crítico
@@ -182,7 +183,7 @@ const Footer = ({ isDarkMode }) => {
 
 // Componente do Cabeçalho
 const Header = ({ activePage, setActivePage, isDarkMode, toggleDarkMode }) => {
-  const navItems = ['Home', 'VeloBot', 'Artigos', 'Apoio', 'Escalações', 'VeloNewsAdmin', 'VeloAcademy'];
+  const navItems = ['Home', 'VeloBot', 'Artigos', 'Apoio', 'Escalações', 'Feed', 'VeloNewsAdmin', 'VeloAcademy'];
   const [unreadTicketsCount, setUnreadTicketsCount] = useState(0);
 
   // Função para buscar contagem de tickets não visualizados
@@ -565,6 +566,8 @@ export default function App_v2() {
         return <ApoioPage />;
       case 'Escalações':
         return <EscalacoesPage />;
+      case 'Feed':
+        return <FeedPage />;
       case 'VeloNewsAdmin':
         return <VeloNewsAdmin />;
       case 'VeloAcademy':

@@ -781,6 +781,149 @@ app.delete('/api/velo-news/:id', async (req, res) => {
   }
 });
 
+// ===== API DE FEED SOCIAL (YouTube e Instagram) =====
+
+// GET /api/feed/youtube - Buscar vídeos do canal YouTube
+app.get('/api/feed/youtube', async (req, res) => {
+  try {
+    const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+    const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || 'UCvelotax'; // ID do canal Velotax
+    
+    if (!YOUTUBE_API_KEY) {
+      console.warn('⚠️ YouTube API Key não configurada - retornando dados mock');
+      // Retornar dados mock para desenvolvimento
+      return res.json({
+        success: true,
+        data: [
+          {
+            id: 'mock-1',
+            type: 'youtube',
+            videoId: 'dQw4w9WgXcQ',
+            title: 'Vídeo Exemplo - Velotax',
+            description: 'Descrição do vídeo',
+            thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
+            channelTitle: 'Velotax',
+            viewCount: '1000',
+            publishedAt: new Date().toISOString(),
+            isShort: false
+          }
+        ]
+      });
+    }
+
+    // Buscar vídeos do canal (últimos 50)
+    const videosUrl = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet&order=date&maxResults=50&type=video`;
+    const videosResponse = await fetch(videosUrl);
+    const videosData = await videosResponse.json();
+
+    if (!videosData.items || videosData.items.length === 0) {
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
+
+    // Buscar detalhes dos vídeos (views, duração, etc)
+    const videoIds = videosData.items.map(item => item.id.videoId).join(',');
+    const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?key=${YOUTUBE_API_KEY}&id=${videoIds}&part=contentDetails,statistics,snippet`;
+    const detailsResponse = await fetch(detailsUrl);
+    const detailsData = await detailsResponse.json();
+
+    // Processar vídeos
+    const processedVideos = detailsData.items.map(item => {
+      const duration = item.contentDetails?.duration || '';
+      const isShort = duration.includes('M') ? false : (parseInt(duration.replace(/[^0-9]/g, '')) < 60);
+      
+      return {
+        id: item.id,
+        type: 'youtube',
+        videoId: item.id,
+        title: item.snippet?.title || '',
+        description: item.snippet?.description || '',
+        thumbnail: item.snippet?.thumbnails?.maxres?.url || item.snippet?.thumbnails?.high?.url || '',
+        channelTitle: item.snippet?.channelTitle || 'Velotax',
+        viewCount: item.statistics?.viewCount || '0',
+        publishedAt: item.snippet?.publishedAt || new Date().toISOString(),
+        isShort: isShort
+      };
+    });
+
+    res.json({
+      success: true,
+      data: processedVideos
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar vídeos do YouTube:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar vídeos do YouTube',
+      error: error.message,
+      data: []
+    });
+  }
+});
+
+// GET /api/feed/instagram - Buscar postagens do Instagram
+app.get('/api/feed/instagram', async (req, res) => {
+  try {
+    const INSTAGRAM_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
+    const INSTAGRAM_USER_ID = process.env.INSTAGRAM_USER_ID;
+    
+    if (!INSTAGRAM_ACCESS_TOKEN || !INSTAGRAM_USER_ID) {
+      console.warn('⚠️ Instagram Access Token não configurado - retornando dados mock');
+      // Retornar dados mock para desenvolvimento
+      return res.json({
+        success: true,
+        data: [
+          {
+            id: 'mock-instagram-1',
+            type: 'instagram',
+            mediaUrl: 'https://via.placeholder.com/500',
+            caption: 'Post exemplo do Instagram da Velotax',
+            timestamp: new Date().toISOString()
+          }
+        ]
+      });
+    }
+
+    // Buscar postagens do Instagram usando Graph API
+    const instagramUrl = `https://graph.instagram.com/${INSTAGRAM_USER_ID}/media?fields=id,caption,media_type,media_url,thumbnail_url,timestamp,permalink&access_token=${INSTAGRAM_ACCESS_TOKEN}&limit=50`;
+    const instagramResponse = await fetch(instagramUrl);
+    const instagramData = await instagramResponse.json();
+
+    if (!instagramData.data || instagramData.data.length === 0) {
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
+
+    // Processar postagens
+    const processedPosts = instagramData.data.map(item => ({
+      id: item.id,
+      type: 'instagram',
+      mediaUrl: item.media_url || item.thumbnail_url || '',
+      imageUrl: item.media_url || item.thumbnail_url || '',
+      caption: item.caption || '',
+      timestamp: item.timestamp || new Date().toISOString(),
+      permalink: item.permalink || ''
+    }));
+
+    res.json({
+      success: true,
+      data: processedPosts
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar postagens do Instagram:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar postagens do Instagram',
+      error: error.message,
+      data: []
+    });
+  }
+});
+
 app.get('/api/articles', async (req, res) => {
   try {
     if (!client) {

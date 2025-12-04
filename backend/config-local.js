@@ -23,7 +23,13 @@ const config = {
   
   // WhatsApp API (para módulo Escalações)
   WHATSAPP_API_URL: process.env.WHATSAPP_API_URL || 'https://whatsapp-api-y40p.onrender.com',
-  WHATSAPP_DEFAULT_JID: process.env.WHATSAPP_DEFAULT_JID || process.env.WHATSAPP_JID || '120363400851545835@g.us'
+  WHATSAPP_DEFAULT_JID: process.env.WHATSAPP_DEFAULT_JID || process.env.WHATSAPP_JID || '120363400851545835@g.us',
+  
+  // Feed Social (YouTube e Instagram)
+  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY || '', // Chave da API do YouTube
+  YOUTUBE_CHANNEL_ID: process.env.YOUTUBE_CHANNEL_ID || '', // ID do canal YouTube da Velotax
+  INSTAGRAM_ACCESS_TOKEN: process.env.INSTAGRAM_ACCESS_TOKEN || '', // Token de acesso do Instagram
+  INSTAGRAM_USER_ID: process.env.INSTAGRAM_USER_ID || '' // ID do usuário Instagram
 };
 
 // Definir variáveis de ambiente se não estiverem definidas
