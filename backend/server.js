@@ -35,6 +35,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { MongoClient, ObjectId } = require('mongodb');
+const { google } = require('googleapis');
 // Carregar variáveis de ambiente
 require('dotenv').config();
 
@@ -948,10 +949,130 @@ app.get('/api/feed/instagram', async (req, res) => {
   });
 });
 
-// POST /api/feed/youtube/like - Dar like em vídeo do YouTube
+// ===== YOUTUBE OAUTH PARA LIKES =====
+
+// Armazenar tokens de acesso dos usuários (em produção, usar MongoDB)
+const userTokens = new Map(); // userId -> { accessToken, refreshToken, expiry }
+
+// Função para obter OAuth2 Client (criar após config estar disponível)
+const getOAuth2Client = () => {
+  const callbackUrl = `${config.INOVA_HUB_API_URL || 'http://localhost:8090'}/api/feed/youtube/oauth/callback`;
+  return new google.auth.OAuth2(
+    config.GOOGLE_CLIENT_ID,
+    config.GOOGLE_CLIENT_SECRET,
+    callbackUrl
+  );
+};
+
+// GET /api/feed/youtube/oauth - Iniciar fluxo OAuth do YouTube
+app.get('/api/feed/youtube/oauth', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId é obrigatório'
+      });
+    }
+
+    if (!config.GOOGLE_CLIENT_ID || !config.GOOGLE_CLIENT_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: 'Google OAuth não configurado. Configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET.'
+      });
+    }
+
+    const oauth2Client = getOAuth2Client();
+    const scopes = [
+      'https://www.googleapis.com/auth/youtube.force-ssl'
+    ];
+
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: scopes,
+      state: userId, // Passar userId no state para recuperar depois
+      prompt: 'consent' // Forçar consent para obter refresh token
+    });
+
+    console.log(`🔐 OAuth URL gerada para usuário: ${userId}`);
+
+    res.json({
+      success: true,
+      authUrl: authUrl
+    });
+  } catch (error) {
+    console.error('❌ Erro ao gerar URL de OAuth:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao gerar URL de autenticação',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/feed/youtube/oauth/callback - Callback do OAuth
+app.get('/api/feed/youtube/oauth/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    const userId = state;
+
+    if (!code) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/feed?error=oauth_cancelled`);
+    }
+
+    const oauth2Client = getOAuth2Client();
+    const { tokens } = await oauth2Client.getToken(code);
+    
+    // Armazenar tokens do usuário
+    userTokens.set(userId, {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiry: tokens.expiry_date || (Date.now() + 3600000) // 1 hora se não tiver expiry
+    });
+
+    console.log(`✅ OAuth do YouTube autorizado para usuário: ${userId}`);
+
+    // Redirecionar para o frontend
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/feed?oauth_success=true`);
+  } catch (error) {
+    console.error('❌ Erro no callback OAuth:', error);
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/feed?error=oauth_failed`);
+  }
+});
+
+// GET /api/feed/youtube/oauth/status - Verificar se usuário está autenticado
+app.get('/api/feed/youtube/oauth/status', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.json({
+        success: false,
+        authenticated: false
+      });
+    }
+
+    const userToken = userTokens.get(userId);
+    const isAuthenticated = !!userToken && (userToken.expiry > Date.now());
+
+    res.json({
+      success: true,
+      authenticated: isAuthenticated
+    });
+  } catch (error) {
+    console.error('❌ Erro ao verificar status OAuth:', error);
+    res.json({
+      success: false,
+      authenticated: false
+    });
+  }
+});
+
+// POST /api/feed/youtube/like - Dar like em vídeo do YouTube (OFICIAL)
 app.post('/api/feed/youtube/like', async (req, res) => {
   try {
-    const { videoId } = req.body;
+    const { videoId, userId } = req.body;
     const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
     if (!videoId) {
@@ -961,32 +1082,112 @@ app.post('/api/feed/youtube/like', async (req, res) => {
       });
     }
 
-    if (!YOUTUBE_API_KEY) {
-      // Sem API key, apenas retornar sucesso (like local)
-      return res.json({
-        success: true,
-        message: 'Like registrado localmente (API não configurada)',
-        videoId: videoId
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId é obrigatório. Faça login primeiro.',
+        requiresAuth: true
       });
     }
 
-    // Nota: A API do YouTube não permite dar like diretamente sem autenticação OAuth do usuário
-    // Por isso, vamos apenas registrar o like localmente e redirecionar para o YouTube
-    // O usuário pode dar like diretamente no YouTube ao assistir o vídeo
+    // Verificar se usuário está autenticado
+    const userToken = userTokens.get(userId);
+    
+    if (!userToken || userToken.expiry <= Date.now()) {
+      // Token expirado ou não existe - precisa reautenticar
+      return res.status(401).json({
+        success: false,
+        message: 'Autenticação necessária. Por favor, autorize o acesso ao YouTube.',
+        requiresAuth: true,
+        authUrl: `${API_BASE_URL || 'http://localhost:8090'}/api/feed/youtube/oauth?userId=${userId}`
+      });
+    }
 
-    console.log(`👍 Like registrado para vídeo: ${videoId}`);
-
-    res.json({
-      success: true,
-      message: 'Like registrado. Para curtir no YouTube, acesse o vídeo diretamente.',
-      videoId: videoId,
-      youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`
+    // Configurar OAuth2 com token do usuário
+    const oauth2Client = getOAuth2Client();
+    oauth2Client.setCredentials({
+      access_token: userToken.accessToken,
+      refresh_token: userToken.refreshToken
     });
+
+    // Criar cliente do YouTube
+    const youtube = google.youtube({
+      version: 'v3',
+      auth: oauth2Client
+    });
+
+    // Dar like no vídeo
+    try {
+      await youtube.videos.rate({
+        id: videoId,
+        rating: 'like'
+      });
+
+      console.log(`👍 Like oficial registrado no YouTube para vídeo: ${videoId} pelo usuário: ${userId}`);
+
+      res.json({
+        success: true,
+        message: 'Like registrado oficialmente no YouTube!',
+        videoId: videoId
+      });
+    } catch (youtubeError) {
+      // Se o token expirou, tentar renovar
+      if (youtubeError.code === 401 && userToken.refreshToken) {
+        try {
+          const refreshOAuth2Client = getOAuth2Client();
+          refreshOAuth2Client.setCredentials({
+            refresh_token: userToken.refreshToken
+          });
+          
+          const { credentials } = await refreshOAuth2Client.refreshAccessToken();
+          
+          // Atualizar tokens
+          userTokens.set(userId, {
+            accessToken: credentials.access_token,
+            refreshToken: userToken.refreshToken,
+            expiry: credentials.expiry_date
+          });
+
+          // Tentar dar like novamente
+          refreshOAuth2Client.setCredentials({
+            access_token: credentials.access_token
+          });
+
+          const refreshedYoutube = google.youtube({
+            version: 'v3',
+            auth: refreshOAuth2Client
+          });
+
+          await refreshedYoutube.videos.rate({
+            id: videoId,
+            rating: 'like'
+          });
+
+          console.log(`👍 Like oficial registrado no YouTube (após renovar token) para vídeo: ${videoId}`);
+
+          res.json({
+            success: true,
+            message: 'Like registrado oficialmente no YouTube!',
+            videoId: videoId
+          });
+        } catch (refreshError) {
+          console.error('❌ Erro ao renovar token:', refreshError);
+          return res.status(401).json({
+            success: false,
+            message: 'Token expirado. Por favor, reautorize o acesso.',
+            requiresAuth: true,
+            authUrl: `${API_BASE_URL || 'http://localhost:8090'}/api/feed/youtube/oauth?userId=${userId}`
+          });
+        }
+      } else {
+        throw youtubeError;
+      }
+    }
   } catch (error) {
-    console.error('❌ Erro ao registrar like:', error);
+    console.error('❌ Erro ao dar like no YouTube:', error);
     res.status(500).json({
       success: false,
-      message: 'Erro ao registrar like',
+      message: 'Erro ao dar like no YouTube',
       error: error.message
     });
   }

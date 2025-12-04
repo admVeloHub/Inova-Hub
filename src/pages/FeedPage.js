@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../config/api-config';
+import { getUserSession } from '../services/auth';
 
 const FeedPage = () => {
   const [feedItems, setFeedItems] = useState([]);
@@ -16,6 +17,8 @@ const FeedPage = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [currentShortIndex, setCurrentShortIndex] = useState(0);
   const [likedVideos, setLikedVideos] = useState(new Set());
+  const [isYouTubeAuthenticated, setIsYouTubeAuthenticated] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const shortsContainerRef = useRef(null);
 
   // Carregar feed
@@ -46,7 +49,58 @@ const FeedPage = () => {
 
   useEffect(() => {
     carregarFeed();
+    verificarAutenticacaoYouTube();
+    
+    // Verificar se OAuth foi bem-sucedido
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('oauth_success') === 'true') {
+      setIsYouTubeAuthenticated(true);
+      setShowAuthPrompt(false);
+      // Limpar URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
+
+  // Verificar se usuário está autenticado no YouTube
+  const verificarAutenticacaoYouTube = async () => {
+    try {
+      const session = getUserSession();
+      if (!session?.user?.email) {
+        setIsYouTubeAuthenticated(false);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/feed/youtube/oauth/status?userId=${encodeURIComponent(session.user.email)}`);
+      const data = await response.json();
+      
+      setIsYouTubeAuthenticated(data.authenticated || false);
+    } catch (error) {
+      console.error('Erro ao verificar autenticação YouTube:', error);
+      setIsYouTubeAuthenticated(false);
+    }
+  };
+
+  // Iniciar autenticação OAuth do YouTube
+  const iniciarAutenticacaoYouTube = async () => {
+    try {
+      const session = getUserSession();
+      if (!session?.user?.email) {
+        alert('Por favor, faça login primeiro para curtir vídeos no YouTube.');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/feed/youtube/oauth?userId=${encodeURIComponent(session.user.email)}`);
+      const data = await response.json();
+      
+      if (data.success && data.authUrl) {
+        // Abrir popup de autenticação
+        window.location.href = data.authUrl;
+      }
+    } catch (error) {
+      console.error('Erro ao iniciar autenticação:', error);
+      alert('Erro ao iniciar autenticação. Tente novamente.');
+    }
+  };
 
   // Filtrar itens por tab
   const filteredItems = feedItems.filter(item => {
@@ -61,17 +115,24 @@ const FeedPage = () => {
     setSelectedItem(item);
   };
 
-  // Dar like no vídeo (YouTube API)
+  // Dar like no vídeo (YouTube API - OFICIAL)
   const handleLikeVideo = async (videoId, e) => {
     e.stopPropagation();
     
+    const session = getUserSession();
+    if (!session?.user?.email) {
+      alert('Por favor, faça login para curtir vídeos no YouTube.');
+      return;
+    }
+
     if (likedVideos.has(videoId)) {
-      // Já curtiu, remover like
-      setLikedVideos(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(videoId);
-        return newSet;
-      });
+      // Já curtiu - não permitir remover (YouTube não tem API para remover like)
+      return;
+    }
+
+    // Verificar autenticação antes de dar like
+    if (!isYouTubeAuthenticated) {
+      setShowAuthPrompt(true);
       return;
     }
 
@@ -79,22 +140,32 @@ const FeedPage = () => {
       const response = await fetch(`${API_BASE_URL}/feed/youtube/like`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoId })
+        body: JSON.stringify({ 
+          videoId,
+          userId: session.user.email
+        })
       });
 
       const result = await response.json();
       
       if (result.success) {
         setLikedVideos(prev => new Set(prev).add(videoId));
+        // Atualizar status de autenticação
+        setIsYouTubeAuthenticated(true);
+      } else if (result.requiresAuth) {
+        // Precisa autenticar
+        setShowAuthPrompt(true);
+        if (result.authUrl) {
+          // Iniciar autenticação automaticamente
+          window.location.href = result.authUrl;
+        }
       } else {
         console.error('Erro ao dar like:', result.message);
-        // Mesmo assim, marcar como curtido localmente
-        setLikedVideos(prev => new Set(prev).add(videoId));
+        alert('Erro ao curtir vídeo. Tente novamente.');
       }
     } catch (error) {
       console.error('Erro ao dar like:', error);
-      // Marcar como curtido localmente mesmo com erro
-      setLikedVideos(prev => new Set(prev).add(videoId));
+      alert('Erro ao curtir vídeo. Tente novamente.');
     }
   };
 
@@ -398,6 +469,59 @@ const FeedPage = () => {
             <p className="text-gray-600 dark:text-gray-400">
               Tente selecionar outra categoria ou verifique as configurações da API.
             </p>
+          </div>
+        )}
+
+        {/* Modal de Autenticação YouTube */}
+        {showAuthPrompt && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowAuthPrompt(false)}
+          >
+            <div 
+              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Autenticação Necessária
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                Para curtir vídeos oficialmente no YouTube, você precisa autorizar o acesso à sua conta do Google.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={iniciarAutenticacaoYouTube}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                >
+                  Autorizar YouTube
+                </button>
+                <button
+                  onClick={() => setShowAuthPrompt(false)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Banner de autenticação (se não autenticado) */}
+        {!isYouTubeAuthenticated && !showAuthPrompt && (
+          <div className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                  🔐 Autentique-se no YouTube para curtir vídeos oficialmente
+                </p>
+              </div>
+              <button
+                onClick={iniciarAutenticacaoYouTube}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors"
+              >
+                Conectar YouTube
+              </button>
+            </div>
           </div>
         )}
 
