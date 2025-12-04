@@ -976,11 +976,28 @@ app.get('/api/feed/youtube/oauth', async (req, res) => {
       });
     }
 
-    if (!config.GOOGLE_CLIENT_ID || !config.GOOGLE_CLIENT_SECRET) {
+    // Verificar configuração
+    const clientId = config.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = config.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+    const callbackUrl = `${config.INOVA_HUB_API_URL || 'http://localhost:8090'}/api/feed/youtube/oauth/callback`;
+
+    console.log('🔍 [OAUTH DEBUG] Configuração:');
+    console.log('  - GOOGLE_CLIENT_ID:', clientId ? `${clientId.substring(0, 20)}...` : '❌ NÃO CONFIGURADO');
+    console.log('  - GOOGLE_CLIENT_SECRET:', clientSecret ? '***CONFIGURADO***' : '❌ NÃO CONFIGURADO');
+    console.log('  - Callback URL:', callbackUrl);
+
+    if (!clientId || !clientSecret) {
       return res.status(500).json({
         success: false,
-        message: 'Google OAuth não configurado. Configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET.'
+        message: 'Google OAuth não configurado. Configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET.',
+        error: 'missing_credentials',
+        instructions: 'Acesse https://console.cloud.google.com/ e configure as credenciais OAuth 2.0'
       });
+    }
+
+    // Verificar se Client ID tem formato correto
+    if (!clientId.includes('.apps.googleusercontent.com')) {
+      console.warn('⚠️ GOOGLE_CLIENT_ID pode estar incorreto (deve terminar com .apps.googleusercontent.com)');
     }
 
     const oauth2Client = getOAuth2Client();
@@ -996,17 +1013,21 @@ app.get('/api/feed/youtube/oauth', async (req, res) => {
     });
 
     console.log(`🔐 OAuth URL gerada para usuário: ${userId}`);
+    console.log(`🔗 URL de callback configurada: ${callbackUrl}`);
+    console.log('⚠️ Certifique-se de que esta URL está configurada no Google Cloud Console!');
 
     res.json({
       success: true,
-      authUrl: authUrl
+      authUrl: authUrl,
+      callbackUrl: callbackUrl // Retornar para debug
     });
   } catch (error) {
     console.error('❌ Erro ao gerar URL de OAuth:', error);
     res.status(500).json({
       success: false,
       message: 'Erro ao gerar URL de autenticação',
-      error: error.message
+      error: error.message,
+      details: 'Verifique se GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET estão corretos'
     });
   }
 });

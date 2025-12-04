@@ -379,9 +379,32 @@ const FeedPage = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header simplificado */}
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
-            Feed Social
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
+              Feed Social
+            </h1>
+            {/* Botão de autenticação YouTube no topo */}
+            {!isYouTubeAuthenticated && (
+              <button
+                onClick={iniciarAutenticacaoYouTube}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                title="Conectar conta do YouTube para curtir vídeos oficialmente"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+                Conectar YouTube
+              </button>
+            )}
+            {isYouTubeAuthenticated && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                Conectado
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tabs simplificadas */}
@@ -485,9 +508,14 @@ const FeedPage = () => {
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                 Autenticação Necessária
               </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
                 Para curtir vídeos oficialmente no YouTube, você precisa autorizar o acesso à sua conta do Google.
               </p>
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-6">
+                <p className="text-xs text-blue-800 dark:text-blue-200">
+                  <strong>Nota:</strong> Se aparecer erro "invalid_client", verifique se o redirect URI está configurado no Google Cloud Console.
+                </p>
+              </div>
               <div className="flex gap-3">
                 <button
                   onClick={iniciarAutenticacaoYouTube}
@@ -506,24 +534,6 @@ const FeedPage = () => {
           </div>
         )}
 
-        {/* Banner de autenticação (se não autenticado) */}
-        {!isYouTubeAuthenticated && !showAuthPrompt && (
-          <div className="mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                  🔐 Autentique-se no YouTube para curtir vídeos oficialmente
-                </p>
-              </div>
-              <button
-                onClick={iniciarAutenticacaoYouTube}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors"
-              >
-                Conectar YouTube
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Modal de Vídeo */}
         {selectedItem && selectedItem.type === 'youtube' && (
