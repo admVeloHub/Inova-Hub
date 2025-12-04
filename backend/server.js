@@ -1026,13 +1026,6 @@ app.get('/api/feed/youtube/oauth', async (req, res) => {
       console.warn('   Client ID atual:', clientId);
     }
 
-    // Verificar se Client ID corresponde ao esperado
-    const expectedClientId = '866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com';
-    if (clientId !== expectedClientId) {
-      console.warn('⚠️ Client ID não corresponde ao esperado!');
-      console.warn('   Esperado:', expectedClientId);
-      console.warn('   Atual:', clientId);
-    }
 
     let oauth2Client;
     try {
