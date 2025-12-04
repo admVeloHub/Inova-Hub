@@ -11,12 +11,11 @@ const config = {
   PORT: process.env.PORT || 8090,
   
   // Google OAuth (para autenticação YouTube e SSO)
-  // Obter em: https://console.cloud.google.com/apis/credentials
-  // 1. Criar OAuth 2.0 Client ID (tipo: Aplicativo da Web)
-  // 2. Adicionar URI de redirecionamento: http://localhost:8090/api/feed/youtube/oauth/callback
-  // 3. Copiar Client ID e Client Secret
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '278491073220-eb4ogvn3aifu0ut9mq3rvu5r9r9l3137.apps.googleusercontent.com',
-  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || 'your-google-client-secret-here',
+  // Client ID: 866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com
+  // Configurado em: https://console.cloud.google.com/apis/credentials
+  // IMPORTANTE: Adicionar redirect URI local: http://localhost:8090/api/feed/youtube/oauth/callback
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com',
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || 'your-google-client-secret-here', // COPIAR O VALOR COMPLETO DO GOOGLE CLOUD CONSOLE
   
   // INOVA_HUB_API_URL (para callbacks OAuth)
   // URL base da API - usado para callbacks do OAuth
@@ -34,7 +33,7 @@ const config = {
   WHATSAPP_DEFAULT_JID: process.env.WHATSAPP_DEFAULT_JID || process.env.WHATSAPP_JID || '120363400851545835@g.us',
   
   // Feed Social (YouTube e Instagram)
-  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY || 'AIzaSyBA52XVYRzT4l19qwRv0WK3vmVfxUecAFc', // Chave da API do YouTube
+  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY || 'AIzaSyD3G5iZv_3bx_q5pNphhRyKIsVRBo0Jwtk', // Chave da API do YouTube (atualizada)
   YOUTUBE_CHANNEL_ID: process.env.YOUTUBE_CHANNEL_ID || '', // ID do canal YouTube da Velotax (opcional, pode usar username)
   YOUTUBE_USERNAME: process.env.YOUTUBE_USERNAME || '@canalvelotax', // Username do canal (@canalvelotax)
   INSTAGRAM_ACCESS_TOKEN: process.env.INSTAGRAM_ACCESS_TOKEN || '', // Token de acesso do Instagram
