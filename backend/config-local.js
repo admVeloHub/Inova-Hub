@@ -11,11 +11,11 @@ const config = {
   PORT: process.env.PORT || 8090,
   
   // Google OAuth (para autenticação YouTube e SSO)
-  // Client ID: 866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com
   // Configurado em: https://console.cloud.google.com/apis/credentials
   // IMPORTANTE: Adicionar redirect URI local: http://localhost:8090/api/feed/youtube/oauth/callback
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com',
-  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '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',
+  // Configure via variáveis de ambiente: GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
   
   // INOVA_HUB_API_URL (para callbacks OAuth)
   // URL base da API - usado para callbacks do OAuth

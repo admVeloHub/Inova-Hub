@@ -11,9 +11,9 @@ Erro 401: invalid_client - "The OAuth client was not found"
 - Não deve ter espaços extras
 - Deve terminar com `.apps.googleusercontent.com`
 
-**Client ID esperado:**
+**Formato do Client ID:**
 ```
-866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com
+[numero]-[string].apps.googleusercontent.com
 ```
 
 ### 2. Client Secret Incorreto
@@ -21,9 +21,9 @@ Erro 401: invalid_client - "The OAuth client was not found"
 - Não deve ter espaços extras
 - Deve começar com `GOCSPX-`
 
-**Client Secret esperado:**
+**Formato do Client Secret:**
 ```
-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
+GOCSPX-[string]
 ```
 
 ### 3. Redirect URI Não Configurado Corretamente
@@ -53,7 +53,7 @@ Ao iniciar o backend, você deve ver:
 
 ```
 🔍 [OAUTH DEBUG] Configuração completa:
-  - GOOGLE_CLIENT_ID: 866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com
+  - GOOGLE_CLIENT_ID: [seu-client-id].apps.googleusercontent.com
   - GOOGLE_CLIENT_SECRET: ***CONFIGURADO***
   - Base URL: http://localhost:8090
   - Callback URL: http://localhost:8090/api/feed/youtube/oauth/callback
@@ -62,7 +62,7 @@ Ao iniciar o backend, você deve ver:
 ### 2. Verificar no Google Cloud Console
 
 1. Acesse: https://console.cloud.google.com/apis/credentials
-2. Clique no Client ID: `866929285541-eooa33671afun3lg68pp0gp7o5g108qd`
+2. Clique no seu Client ID OAuth
 3. Verifique:
    - **Tipo**: Deve ser "Aplicativo da Web"
    - **URIs de redirecionamento**: Deve conter exatamente:
@@ -73,7 +73,7 @@ Ao iniciar o backend, você deve ver:
 ### 3. Testar URL de Autenticação
 
 Ao clicar em "Conectar YouTube", a URL gerada deve conter:
-- `client_id=866929285541-eooa33671afun3lg68pp0gp7o5g108qd`
+- `client_id=[seu-client-id]`
 - `redirect_uri=http%3A%2F%2Flocalhost%3A8090%2Fapi%2Ffeed%2Fyoutube%2Foauth%2Fcallback`
 
 ## ✅ Checklist
