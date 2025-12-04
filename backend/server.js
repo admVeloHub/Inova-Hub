@@ -1098,7 +1098,7 @@ app.get('/api/feed/youtube/oauth/callback', async (req, res) => {
 
     if (!code) {
       const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' 
-        ? 'https://velohub-278491073220.us-east1.run.app' 
+        ? 'https://velohub-main-staging-278491073220.us-east1.run.app' 
         : 'http://localhost:8080');
       return res.redirect(`${frontendUrl}/feed?error=oauth_cancelled`);
     }
