@@ -795,9 +795,15 @@ app.get('/api/feed/youtube', async (req, res) => {
     console.log('📹 [YOUTUBE FEED] Configuração:', {
       hasApiKey: !!YOUTUBE_API_KEY,
       apiKeyLength: YOUTUBE_API_KEY?.length || 0,
+      apiKeyPreview: YOUTUBE_API_KEY ? `${YOUTUBE_API_KEY.substring(0, 10)}...` : 'não configurada',
       channelId: YOUTUBE_CHANNEL_ID || 'não configurado',
       username: YOUTUBE_USERNAME
     });
+    
+    // Verificar se a API Key está correta
+    if (YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'AIzaSyD3G5iZv_3bx_q5pNphhRyKIsVRBo0Jwtk') {
+      console.warn('⚠️ [YOUTUBE FEED] API Key pode estar incorreta! Esperada: AIzaSyD3G5iZv_3bx_q5pNphhRyKIsVRBo0Jwtk');
+    }
     
     if (!YOUTUBE_API_KEY) {
       console.warn('⚠️ YouTube API Key não configurada - retornando dados mock');
