@@ -851,13 +851,30 @@ app.get('/api/feed/youtube', async (req, res) => {
     }
 
     if (!channelId) {
-      console.warn('⚠️ Channel ID não encontrado - usando busca por termo');
+      console.warn('⚠️ [YOUTUBE FEED] Channel ID não encontrado - usando busca por termo');
       // Fallback: buscar vídeos por termo de busca
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&q=canalvelotax&type=video&part=snippet&order=date&maxResults=50`;
+      console.log(`📹 [YOUTUBE FEED] Buscando por termo: ${searchUrl.replace(YOUTUBE_API_KEY, '***')}`);
       const searchResponse = await fetch(searchUrl);
       const videosData = await searchResponse.json();
       
+      console.log(`📹 [YOUTUBE FEED] Resposta da busca por termo:`, {
+        hasItems: !!videosData.items,
+        itemsCount: videosData.items?.length || 0,
+        error: videosData.error
+      });
+      
+      if (videosData.error) {
+        console.error('❌ [YOUTUBE FEED] Erro da API do YouTube:', videosData.error);
+        return res.status(500).json({ 
+          success: false, 
+          error: videosData.error.message || 'Erro ao buscar vídeos',
+          details: videosData.error
+        });
+      }
+      
       if (!videosData.items || videosData.items.length === 0) {
+        console.warn('⚠️ [YOUTUBE FEED] Nenhum vídeo encontrado na busca por termo');
         return res.json({ success: true, data: [] });
       }
 
