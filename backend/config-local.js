@@ -8,7 +8,7 @@ const config = {
   
   // Servidor
   NODE_ENV: process.env.NODE_ENV || 'development',
-  PORT: process.env.PORT || 8080,
+  PORT: process.env.PORT || 8090,
   
   // Google OAuth
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '278491073220-eb4ogvn3aifu0ut9mq3rvu5r9r9l3137.apps.googleusercontent.com',
@@ -19,7 +19,11 @@ const config = {
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || 'AI-your-gemini-key-here',
   
   // Configurações de teste
-  LOCAL_TESTING: process.env.LOCAL_TESTING || 'false'
+  LOCAL_TESTING: process.env.LOCAL_TESTING || 'false',
+  
+  // WhatsApp API (para módulo Escalações)
+  WHATSAPP_API_URL: process.env.WHATSAPP_API_URL || 'https://whatsapp-api-y40p.onrender.com',
+  WHATSAPP_DEFAULT_JID: process.env.WHATSAPP_DEFAULT_JID || process.env.WHATSAPP_JID || '120363400851545835@g.us'
 };
 
 // Definir variáveis de ambiente se não estiverem definidas

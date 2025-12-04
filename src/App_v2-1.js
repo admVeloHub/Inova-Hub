@@ -13,6 +13,7 @@ import LoginPage from './components/LoginPage';
 import Chatbot from './components/Chatbot';
 import SupportModal from './components/SupportModal';
 import EscalacoesPage from './pages/EscalacoesPage';
+import VeloNewsAdmin from './pages/VeloNewsAdmin';
 import { formatArticleContent, formatPreviewText, formatResponseText } from './utils/textFormatter';
 
 // Sistema de gerenciamento de estado para modal crítico
@@ -181,7 +182,7 @@ const Footer = ({ isDarkMode }) => {
 
 // Componente do Cabeçalho
 const Header = ({ activePage, setActivePage, isDarkMode, toggleDarkMode }) => {
-  const navItems = ['Home', 'VeloBot', 'Artigos', 'Apoio', 'Escalações', 'VeloAcademy'];
+  const navItems = ['Home', 'VeloBot', 'Artigos', 'Apoio', 'Escalações', 'VeloNewsAdmin', 'VeloAcademy'];
   const [unreadTicketsCount, setUnreadTicketsCount] = useState(0);
 
   // Função para buscar contagem de tickets não visualizados
@@ -554,6 +555,7 @@ export default function App_v2() {
           setRefreshAcknowledgedNews={setRefreshAcknowledgedNews}
           setAcknowledgedNewsIds={setAcknowledgedNewsIds}
           setUpdateAcknowledgedNewsCallback={setUpdateAcknowledgedNewsCallback}
+          setActivePage={setActivePage}
         />;
              case 'VeloBot':
         return <ProcessosPage />;
@@ -563,6 +565,8 @@ export default function App_v2() {
         return <ApoioPage />;
       case 'Escalações':
         return <EscalacoesPage />;
+      case 'VeloNewsAdmin':
+        return <VeloNewsAdmin />;
       case 'VeloAcademy':
         return <div className="text-center p-10 text-gray-800 dark:text-gray-200"><h1 className="text-3xl">VeloAcademy</h1><p>Clique no botão VeloAcademy no header para acessar a plataforma.</p></div>;
       default:
@@ -573,6 +577,8 @@ export default function App_v2() {
           veloNews={veloNews}
           setRefreshAcknowledgedNews={setRefreshAcknowledgedNews}
           setAcknowledgedNewsIds={setAcknowledgedNewsIds}
+          setUpdateAcknowledgedNewsCallback={setUpdateAcknowledgedNewsCallback}
+          setActivePage={setActivePage}
         />;
     }
   };
@@ -814,7 +820,7 @@ const PontoWidget = () => {
 };
 
 // Conteúdo da Página Home - VERSÃO MELHORADA
-const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews, setRefreshAcknowledgedNews, setAcknowledgedNewsIds: setParentAcknowledgedNewsIds, setUpdateAcknowledgedNewsCallback }) => {
+const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews, setRefreshAcknowledgedNews, setAcknowledgedNewsIds: setParentAcknowledgedNewsIds, setUpdateAcknowledgedNewsCallback, setActivePage }) => {
     const [selectedNews, setSelectedNews] = useState(null);
     const [selectedArticle, setSelectedArticle] = useState(null);
     const [recentItems, setRecentItems] = useState([]);
@@ -1594,9 +1600,9 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                         </div>
                     )}
                     
-                    {/* Botão Ver Notícias Anteriores */}
-                    {veloNews.length > 4 && (
-                        <div className="text-center mt-6">
+                    {/* Botões de Ação */}
+                    <div className="text-center mt-6 flex gap-4 justify-center">
+                        {veloNews.length > 4 && (
                             <button
                                 onClick={() => {
                                     console.log('🔍 Abrindo modal de histórico de notícias');
@@ -1611,8 +1617,24 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                             >
                                 Ver Notícias Anteriores
                             </button>
-                        </div>
-                    )}
+                        )}
+                        {setActivePage && (
+                            <button
+                                onClick={() => {
+                                    console.log('🔍 Acessando painel VeloNewsAdmin');
+                                    setActivePage('VeloNewsAdmin');
+                                }}
+                                className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                                style={{
+                                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                                    border: 'none',
+                                    boxShadow: '0 4px 15px rgba(5, 150, 105, 0.3)'
+                                }}
+                            >
+                                📝 Gerenciar Notícias
+                            </button>
+                        )}
+                    </div>
                 </div>
             </section>
             <aside className="rounded-lg shadow-sm flex flex-col min-h-[calc(100vh-160px)] velohub-container" style={{borderRadius: '9.6px', boxShadow: '0 3.2px 16px rgba(0, 0, 0, 0.1)', padding: '19.2px', position: 'relative', marginRight: '20px'}}>

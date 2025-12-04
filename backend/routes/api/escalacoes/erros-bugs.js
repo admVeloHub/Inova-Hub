@@ -493,9 +493,9 @@ const initErrosBugsRoutes = (client, connectToMongo, services = {}) => {
       let statusFinal = inputStatus;
       if (!statusFinal && reaction) {
         if (reaction === '✅') {
-          statusFinal = 'Resolvido';
-        } else if (reaction === '❌') {
-          statusFinal = 'Negado';
+          statusFinal = 'feito';
+        } else if (reaction === '❌' || reaction === '✖️' || reaction === '✖') {
+          statusFinal = 'não feito';
         }
       }
 

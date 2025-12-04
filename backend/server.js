@@ -92,6 +92,12 @@ try {
 const config = require('./config');
 
 // Log de configurações WhatsApp (apenas em desenvolvimento)
+console.log('🔧 [CONFIG] Configurações carregadas:');
+console.log('  - WHATSAPP_API_URL:', config.WHATSAPP_API_URL || '❌ Não configurado');
+console.log('  - WHATSAPP_DEFAULT_JID:', config.WHATSAPP_DEFAULT_JID || '❌ Não configurado');
+console.log('  - INOVA_HUB_API_URL:', config.INOVA_HUB_API_URL || '❌ Não configurado');
+console.log('  - PORT:', config.PORT || '❌ Não configurado');
+console.log('  - NODE_ENV:', config.NODE_ENV || 'development');
 if (process.env.NODE_ENV === 'development') {
   console.log('📱 Configurações WhatsApp:');
   console.log('   - WHATSAPP_API_URL:', config.WHATSAPP_API_URL ? '✅ Configurado' : '❌ Não configurado');
@@ -509,13 +515,16 @@ app.get('/api/velo-news', async (req, res) => {
       return {
         _id: item._id,
         // Usando campos padrão do schema
-        title: item.titulo ?? '(sem título)',
-        content: parseTextContent(item.conteudo ?? ''),
-        is_critical: item.isCritical === true ? 'Y' : 'N',
-        solved: (() => {
-          console.log('🔍 BACKEND - item.solved:', item.solved, 'tipo:', typeof item.solved);
-          return item.solved || false;
-        })(),
+        titulo: item.titulo ?? item.title ?? '(sem título)',
+        title: item.titulo ?? item.title ?? '(sem título)',
+        conteudo: item.conteudo ?? item.content ?? '',
+        content: parseTextContent(item.conteudo ?? item.content ?? ''),
+        isCritical: item.isCritical === true || item.is_critical === 'Y',
+        is_critical: item.isCritical === true ? 'Y' : (item.is_critical || 'N'),
+        solved: item.solved || false,
+        // Arrays de imagens e vídeos (Base64 armazenado no MongoDB)
+        images: Array.isArray(item.images) ? item.images : [],
+        videos: Array.isArray(item.videos) ? item.videos : [],
         createdAt,
         updatedAt: item.updatedAt ?? createdAt,
         source: 'Velonews'
@@ -533,6 +542,172 @@ app.get('/api/velo-news', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao buscar notícias',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/velo-news - Criar nova notícia
+app.post('/api/velo-news', async (req, res) => {
+  try {
+    if (!client) {
+      return res.status(503).json({
+        success: false,
+        message: 'MongoDB não configurado',
+        data: null
+      });
+    }
+
+    const { titulo, conteudo, isCritical, solved, images, videos } = req.body;
+
+    if (!titulo || !conteudo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Título e conteúdo são obrigatórios',
+        data: null
+      });
+    }
+
+    await connectToMongo();
+    const db = client.db('console_conteudo');
+    const collection = db.collection('Velonews');
+
+    const now = new Date();
+    const noticia = {
+      titulo: String(titulo).trim(),
+      conteudo: String(conteudo).trim(),
+      isCritical: isCritical === true || isCritical === 'Y',
+      solved: solved === true || solved === 'true',
+      images: Array.isArray(images) ? images : [],
+      videos: Array.isArray(videos) ? videos : [],
+      createdAt: now,
+      updatedAt: now
+    };
+
+    const result = await collection.insertOne(noticia);
+
+    console.log(`✅ Notícia criada: ${result.insertedId}`);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        _id: result.insertedId,
+        ...noticia
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erro ao criar notícia:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao criar notícia',
+      error: error.message
+    });
+  }
+});
+
+// PUT /api/velo-news/:id - Atualizar notícia
+app.put('/api/velo-news/:id', async (req, res) => {
+  try {
+    if (!client) {
+      return res.status(503).json({
+        success: false,
+        message: 'MongoDB não configurado',
+        data: null
+      });
+    }
+
+    await connectToMongo();
+    const db = client.db('console_conteudo');
+    const collection = db.collection('Velonews');
+
+    const { ObjectId } = require('mongodb');
+    const filter = {
+      _id: ObjectId.isValid(req.params.id) ? new ObjectId(req.params.id) : req.params.id
+    };
+
+    const { titulo, conteudo, isCritical, solved, images, videos } = req.body;
+    const now = new Date();
+
+    const updateData = {
+      updatedAt: now
+    };
+
+    if (titulo !== undefined) updateData.titulo = String(titulo).trim();
+    if (conteudo !== undefined) updateData.conteudo = String(conteudo).trim();
+    if (isCritical !== undefined) updateData.isCritical = isCritical === true || isCritical === 'Y';
+    if (solved !== undefined) updateData.solved = solved === true || solved === 'true';
+    if (images !== undefined) updateData.images = Array.isArray(images) ? images : [];
+    if (videos !== undefined) updateData.videos = Array.isArray(videos) ? videos : [];
+
+    const result = await collection.updateOne(filter, { $set: updateData });
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notícia não encontrada',
+        data: null
+      });
+    }
+
+    console.log(`✅ Notícia atualizada: ${req.params.id}`);
+
+    const noticia = await collection.findOne(filter);
+
+    res.json({
+      success: true,
+      data: noticia
+    });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar notícia:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao atualizar notícia',
+      error: error.message
+    });
+  }
+});
+
+// DELETE /api/velo-news/:id - Deletar notícia
+app.delete('/api/velo-news/:id', async (req, res) => {
+  try {
+    if (!client) {
+      return res.status(503).json({
+        success: false,
+        message: 'MongoDB não configurado',
+        data: null
+      });
+    }
+
+    await connectToMongo();
+    const db = client.db('console_conteudo');
+    const collection = db.collection('Velonews');
+
+    const { ObjectId } = require('mongodb');
+    const filter = {
+      _id: ObjectId.isValid(req.params.id) ? new ObjectId(req.params.id) : req.params.id
+    };
+
+    const result = await collection.deleteOne(filter);
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notícia não encontrada',
+        data: null
+      });
+    }
+
+    console.log(`✅ Notícia deletada: ${req.params.id}`);
+
+    res.json({
+      success: true,
+      message: 'Notícia deletada com sucesso'
+    });
+  } catch (error) {
+    console.error('❌ Erro ao deletar notícia:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao deletar notícia',
       error: error.message
     });
   }

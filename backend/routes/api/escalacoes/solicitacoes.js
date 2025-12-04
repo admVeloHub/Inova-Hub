@@ -204,6 +204,13 @@ const initSolicitacoesRoutes = (client, connectToMongo, services = {}) => {
       let waMessageIdFinal = waMessageId || null;
       let messageIdsArray = [];
       
+      console.log('[WHATSAPP DEBUG] Verificando configuração:', {
+        WHATSAPP_API_URL: config.WHATSAPP_API_URL ? '✅ Configurado' : '❌ Não configurado',
+        WHATSAPP_DEFAULT_JID: config.WHATSAPP_DEFAULT_JID ? '✅ Configurado' : '❌ Não configurado',
+        mensagemTexto: mensagemTexto ? '✅ Existe' : '❌ Não existe',
+        mensagemLength: mensagemTexto ? mensagemTexto.length : 0
+      });
+      
       if (config.WHATSAPP_API_URL && config.WHATSAPP_DEFAULT_JID && mensagemTexto) {
         try {
           // Extrair imagens do payload se existirem
@@ -495,9 +502,9 @@ const initSolicitacoesRoutes = (client, connectToMongo, services = {}) => {
       let statusFinal = inputStatus;
       if (!statusFinal && reaction) {
         if (reaction === '✅') {
-          statusFinal = 'Resolvido';
-        } else if (reaction === '❌') {
-          statusFinal = 'Negado';
+          statusFinal = 'feito';
+        } else if (reaction === '❌' || reaction === '✖️' || reaction === '✖') {
+          statusFinal = 'não feito';
         }
       }
 

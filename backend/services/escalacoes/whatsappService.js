@@ -88,8 +88,22 @@ function parseMetaFromText(texto) {
 async function sendMessage(jid, mensagem, imagens = [], videos = [], options = {}) {
   const apiUrl = config.WHATSAPP_API_URL;
   
+  console.log('[WHATSAPP DEBUG] ============================================');
+  console.log('[WHATSAPP DEBUG] Iniciando envio de mensagem');
+  console.log('[WHATSAPP DEBUG] API URL:', apiUrl || '❌ NÃO CONFIGURADA');
+  console.log('[WHATSAPP DEBUG] JID recebido:', jid);
+  console.log('[WHATSAPP DEBUG] Mensagem length:', mensagem ? mensagem.length : 0);
+  console.log('[WHATSAPP DEBUG] Imagens:', imagens ? imagens.length : 0);
+  console.log('[WHATSAPP DEBUG] Videos:', videos ? videos.length : 0);
+  console.log('[WHATSAPP DEBUG] Options:', JSON.stringify(options, null, 2));
+  console.log('[WHATSAPP DEBUG] Config completo:', {
+    WHATSAPP_API_URL: config.WHATSAPP_API_URL,
+    WHATSAPP_DEFAULT_JID: config.WHATSAPP_DEFAULT_JID
+  });
+  console.log('[WHATSAPP DEBUG] ============================================');
+  
   if (!apiUrl) {
-    console.log('[WHATSAPP] API URL não configurada - pulando envio');
+    console.error('[WHATSAPP ERROR] API URL não configurada - pulando envio');
     return { ok: false, error: 'WhatsApp API não configurada' };
   }
   
@@ -97,14 +111,21 @@ async function sendMessage(jid, mensagem, imagens = [], videos = [], options = {
     // Formatar JID se necessário
     let destinatario = formatJid(jid);
     if (!destinatario) {
+      console.error('[WHATSAPP ERROR] Destino inválido:', jid);
       return { ok: false, error: 'Destino inválido' };
     }
+    
+    console.log('[WHATSAPP DEBUG] JID formatado:', destinatario);
     
     // Extrair CPF e solicitação de options ou mensagem
     const { cpf: cpfOption, solicitacao: solOption, agente } = options;
     const parsed = parseMetaFromText(mensagem);
     const cpf = cpfOption || parsed.cpf || null;
     const solicitacao = solOption || parsed.solicitacao || null;
+    
+    console.log('[WHATSAPP DEBUG] CPF extraído:', cpf);
+    console.log('[WHATSAPP DEBUG] Solicitação extraída:', solicitacao);
+    console.log('[WHATSAPP DEBUG] Agente:', agente);
     
     // Preparar payload conforme API externa
     const payload = {
@@ -118,13 +139,22 @@ async function sendMessage(jid, mensagem, imagens = [], videos = [], options = {
     };
     
     console.log(`[WHATSAPP] Enviando mensagem para ${destinatario}...`);
+    console.log('[WHATSAPP DEBUG] Payload completo:', JSON.stringify({
+      ...payload,
+      mensagem: payload.mensagem.substring(0, 100) + '...',
+      imagens: payload.imagens.length + ' imagens'
+    }, null, 2));
     
     // Fazer requisição com timeout de 30 segundos
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
     
     try {
-      const response = await fetch(`${apiUrl}/send`, {
+      const url = `${apiUrl}/send`;
+      console.log('[WHATSAPP DEBUG] URL completa:', url);
+      console.log('[WHATSAPP DEBUG] Fazendo requisição POST...');
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -135,49 +165,81 @@ async function sendMessage(jid, mensagem, imagens = [], videos = [], options = {
       
       clearTimeout(timeoutId);
       
+      console.log('[WHATSAPP DEBUG] Resposta recebida:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Erro desconhecido');
+        console.error('[WHATSAPP ERROR] Resposta não OK:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText.substring(0, 500)
+        });
         
         if (response.status === 503) {
-          console.error('[WHATSAPP] WhatsApp desconectado (503)');
+          console.error('[WHATSAPP ERROR] WhatsApp desconectado (503)');
           return { ok: false, error: 'WhatsApp desconectado' };
         }
         
         if (response.status === 400) {
-          console.error('[WHATSAPP] Destino inválido (400)');
+          console.error('[WHATSAPP ERROR] Destino inválido (400)');
           return { ok: false, error: 'Destino inválido' };
         }
         
-        console.error(`[WHATSAPP] Erro HTTP ${response.status}:`, errorText);
+        console.error(`[WHATSAPP ERROR] Erro HTTP ${response.status}:`, errorText);
         return { ok: false, error: `Erro HTTP ${response.status}: ${errorText}` };
       }
       
       const data = await response.json();
+      console.log('[WHATSAPP DEBUG] Dados da resposta:', JSON.stringify(data, null, 2));
       
       if (data.ok) {
-        console.log(`[WHATSAPP] Mensagem enviada com sucesso! messageId: ${data.messageId}`);
+        console.log(`[WHATSAPP SUCCESS] Mensagem enviada com sucesso! messageId: ${data.messageId}`);
         return {
           ok: true,
           messageId: data.messageId || null,
           messageIds: Array.isArray(data.messageIds) ? data.messageIds : (data.messageId ? [data.messageId] : [])
         };
       } else {
-        console.error('[WHATSAPP] Erro na resposta:', data.error);
+        console.error('[WHATSAPP ERROR] Erro na resposta:', data.error);
         return { ok: false, error: data.error || 'Erro desconhecido' };
       }
     } catch (fetchError) {
       clearTimeout(timeoutId);
       
+      console.error('[WHATSAPP ERROR] Erro na requisição fetch:', {
+        name: fetchError.name,
+        message: fetchError.message,
+        stack: fetchError.stack?.substring(0, 500)
+      });
+      
       if (fetchError.name === 'AbortError') {
-        console.error('[WHATSAPP] Timeout ao enviar mensagem');
+        console.error('[WHATSAPP ERROR] Timeout ao enviar mensagem');
         return { ok: false, error: 'Timeout ao enviar mensagem' };
       }
       
-      console.error('[WHATSAPP] Erro ao fazer requisição:', fetchError.message);
+      if (fetchError.code === 'ECONNREFUSED') {
+        console.error('[WHATSAPP ERROR] Conexão recusada - API WhatsApp pode estar offline');
+        return { ok: false, error: 'API WhatsApp offline ou inacessível' };
+      }
+      
+      if (fetchError.code === 'ENOTFOUND') {
+        console.error('[WHATSAPP ERROR] Host não encontrado - URL da API pode estar incorreta');
+        return { ok: false, error: 'URL da API WhatsApp inválida' };
+      }
+      
+      console.error('[WHATSAPP ERROR] Erro ao fazer requisição:', fetchError.message);
       return { ok: false, error: fetchError.message };
     }
   } catch (error) {
-    console.error('[WHATSAPP] Erro geral:', error);
+    console.error('[WHATSAPP ERROR] Erro geral:', {
+      message: error.message,
+      stack: error.stack?.substring(0, 500)
+    });
     return { ok: false, error: error.message || 'Erro desconhecido' };
   }
 }

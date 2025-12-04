@@ -56,6 +56,12 @@ module.exports = {
   // Formato: número individual (5511999999999@s.whatsapp.net) ou grupo (120363400851545835@g.us)
   WHATSAPP_DEFAULT_JID: process.env.WHATSAPP_JID || process.env.WHATSAPP_DEFAULT_JID,
   
+  // URL do Inova-Hub API (para webhooks e callbacks do WhatsApp)
+  // Usado pelo serviço WhatsApp para chamar endpoints de auto-status
+  INOVA_HUB_API_URL: process.env.INOVA_HUB_API_URL || (process.env.NODE_ENV === 'production' 
+    ? 'https://velohub-278491073220.us-east1.run.app' 
+    : 'http://localhost:8090'),
+  
   // Cache timeout para dados do chatbot (em ms)
   CHATBOT_CACHE_TIMEOUT: parseInt(process.env.CHATBOT_CACHE_TIMEOUT) || 300000,
   
