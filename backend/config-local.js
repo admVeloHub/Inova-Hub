@@ -13,9 +13,9 @@ const config = {
   // Google OAuth (para autenticação YouTube e SSO)
   // Configurado em: https://console.cloud.google.com/apis/credentials
   // Redirect URI de produção: https://velohub-278491073220.us-east1.run.app/api/feed/youtube/oauth/callback
-  // IMPORTANTE: Em produção, configure via variáveis de ambiente no Google Cloud Run
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
-  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+  // Se variáveis de ambiente não estiverem definidas, usa estes valores padrão
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com',
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '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',
   
   // INOVA_HUB_API_URL (para callbacks OAuth)
   // URL base da API - usado para callbacks do OAuth
