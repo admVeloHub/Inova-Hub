@@ -956,10 +956,26 @@ const userTokens = new Map(); // userId -> { accessToken, refreshToken, expiry }
 
 // Função para obter OAuth2 Client (criar após config estar disponível)
 const getOAuth2Client = () => {
-  const callbackUrl = `${config.INOVA_HUB_API_URL || 'http://localhost:8090'}/api/feed/youtube/oauth/callback`;
+  // Usar valores do config ou variáveis de ambiente diretamente
+  const clientId = config.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = config.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+  const baseUrl = config.INOVA_HUB_API_URL || process.env.INOVA_HUB_API_URL || 'http://localhost:8090';
+  const callbackUrl = `${baseUrl}/api/feed/youtube/oauth/callback`;
+  
+  // Log detalhado para debug
+  console.log('🔧 [OAUTH2 CLIENT] Criando cliente:');
+  console.log('  - Client ID:', clientId ? `${clientId.substring(0, 30)}...` : '❌ NÃO ENCONTRADO');
+  console.log('  - Client Secret:', clientSecret ? '***CONFIGURADO***' : '❌ NÃO ENCONTRADO');
+  console.log('  - Base URL:', baseUrl);
+  console.log('  - Callback URL:', callbackUrl);
+  
+  if (!clientId || !clientSecret) {
+    throw new Error('GOOGLE_CLIENT_ID ou GOOGLE_CLIENT_SECRET não configurados');
+  }
+  
   return new google.auth.OAuth2(
-    config.GOOGLE_CLIENT_ID,
-    config.GOOGLE_CLIENT_SECRET,
+    clientId.trim(), // Remover espaços extras
+    clientSecret.trim(), // Remover espaços extras
     callbackUrl
   );
 };
@@ -977,44 +993,86 @@ app.get('/api/feed/youtube/oauth', async (req, res) => {
     }
 
     // Verificar configuração
-    const clientId = config.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = config.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
-    const callbackUrl = `${config.INOVA_HUB_API_URL || 'http://localhost:8090'}/api/feed/youtube/oauth/callback`;
+    const clientId = (config.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID)?.trim();
+    const clientSecret = (config.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET)?.trim();
+    const baseUrl = (config.INOVA_HUB_API_URL || process.env.INOVA_HUB_API_URL || 'http://localhost:8090').trim();
+    const callbackUrl = `${baseUrl}/api/feed/youtube/oauth/callback`;
 
-    console.log('🔍 [OAUTH DEBUG] Configuração:');
-    console.log('  - GOOGLE_CLIENT_ID:', clientId ? `${clientId.substring(0, 20)}...` : '❌ NÃO CONFIGURADO');
+    console.log('🔍 [OAUTH DEBUG] Configuração completa:');
+    console.log('  - GOOGLE_CLIENT_ID:', clientId || '❌ NÃO CONFIGURADO');
+    console.log('  - GOOGLE_CLIENT_ID (completo):', clientId);
     console.log('  - GOOGLE_CLIENT_SECRET:', clientSecret ? '***CONFIGURADO***' : '❌ NÃO CONFIGURADO');
+    console.log('  - Base URL:', baseUrl);
     console.log('  - Callback URL:', callbackUrl);
+    console.log('  - Callback URL (deve estar no Google Console):', callbackUrl);
 
     if (!clientId || !clientSecret) {
       return res.status(500).json({
         success: false,
         message: 'Google OAuth não configurado. Configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET.',
         error: 'missing_credentials',
-        instructions: 'Acesse https://console.cloud.google.com/ e configure as credenciais OAuth 2.0'
+        instructions: 'Acesse https://console.cloud.google.com/ e configure as credenciais OAuth 2.0',
+        debug: {
+          hasClientId: !!clientId,
+          hasClientSecret: !!clientSecret,
+          clientIdLength: clientId?.length || 0
+        }
       });
     }
 
     // Verificar se Client ID tem formato correto
     if (!clientId.includes('.apps.googleusercontent.com')) {
       console.warn('⚠️ GOOGLE_CLIENT_ID pode estar incorreto (deve terminar com .apps.googleusercontent.com)');
+      console.warn('   Client ID atual:', clientId);
     }
 
-    const oauth2Client = getOAuth2Client();
+    // Verificar se Client ID corresponde ao esperado
+    const expectedClientId = '866929285541-eooa33671afun3lg68pp0gp7o5g108qd.apps.googleusercontent.com';
+    if (clientId !== expectedClientId) {
+      console.warn('⚠️ Client ID não corresponde ao esperado!');
+      console.warn('   Esperado:', expectedClientId);
+      console.warn('   Atual:', clientId);
+    }
+
+    let oauth2Client;
+    try {
+      oauth2Client = getOAuth2Client();
+    } catch (error) {
+      console.error('❌ Erro ao criar OAuth2 client:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao criar cliente OAuth2',
+        error: error.message
+      });
+    }
+
     const scopes = [
       'https://www.googleapis.com/auth/youtube.force-ssl'
     ];
 
-    const authUrl = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: scopes,
-      state: userId, // Passar userId no state para recuperar depois
-      prompt: 'consent' // Forçar consent para obter refresh token
-    });
-
-    console.log(`🔐 OAuth URL gerada para usuário: ${userId}`);
-    console.log(`🔗 URL de callback configurada: ${callbackUrl}`);
-    console.log('⚠️ Certifique-se de que esta URL está configurada no Google Cloud Console!');
+    let authUrl;
+    try {
+      authUrl = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: scopes,
+        state: userId, // Passar userId no state para recuperar depois
+        prompt: 'consent' // Forçar consent para obter refresh token
+      });
+      
+      console.log(`🔐 OAuth URL gerada para usuário: ${userId}`);
+      console.log(`🔗 URL de callback esperada: ${callbackUrl}`);
+      console.log(`🔗 Auth URL gerada: ${authUrl.substring(0, 100)}...`);
+      console.log('⚠️ IMPORTANTE: Verifique se o redirect URI está EXATAMENTE assim no Google Cloud Console:');
+      console.log(`   ${callbackUrl}`);
+    } catch (error) {
+      console.error('❌ Erro ao gerar Auth URL:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao gerar URL de autenticação',
+        error: error.message,
+        details: 'Verifique se as credenciais estão corretas'
+      });
+    }
 
     res.json({
       success: true,
