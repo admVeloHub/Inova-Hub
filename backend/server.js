@@ -787,7 +787,8 @@ app.delete('/api/velo-news/:id', async (req, res) => {
 app.get('/api/feed/youtube', async (req, res) => {
   try {
     const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-    const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || 'UCvelotax'; // ID do canal Velotax
+    const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
+    const YOUTUBE_USERNAME = process.env.YOUTUBE_USERNAME || '@canalvelotax'; // Username do canal
     
     if (!YOUTUBE_API_KEY) {
       console.warn('⚠️ YouTube API Key não configurada - retornando dados mock');
@@ -811,8 +812,74 @@ app.get('/api/feed/youtube', async (req, res) => {
       });
     }
 
+    let channelId = YOUTUBE_CHANNEL_ID;
+    
+    // Se não tiver Channel ID, buscar pelo username
+    if (!channelId && YOUTUBE_USERNAME) {
+      const username = YOUTUBE_USERNAME.replace('@', '').replace('https://www.youtube.com/', '').replace('channel/', '').replace('user/', '').replace('c/', '');
+      
+      // Tentar buscar pelo forUsername primeiro (formato antigo)
+      try {
+        const channelUrl = `https://www.googleapis.com/youtube/v3/channels?key=${YOUTUBE_API_KEY}&forUsername=${username}&part=id`;
+        const channelResponse = await fetch(channelUrl);
+        const channelData = await channelResponse.json();
+        
+        if (channelData.items && channelData.items.length > 0) {
+          channelId = channelData.items[0].id;
+        } else {
+          // Tentar buscar pelo handle (formato novo @canalvelotax)
+          const handleUrl = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&q=${username}&type=channel&part=snippet&maxResults=1`;
+          const handleResponse = await fetch(handleUrl);
+          const handleData = await handleResponse.json();
+          
+          if (handleData.items && handleData.items.length > 0) {
+            channelId = handleData.items[0].snippet.channelId;
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Erro ao buscar Channel ID pelo username:', error.message);
+      }
+    }
+
+    if (!channelId) {
+      console.warn('⚠️ Channel ID não encontrado - usando busca por termo');
+      // Fallback: buscar vídeos por termo de busca
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&q=canalvelotax&type=video&part=snippet&order=date&maxResults=50`;
+      const searchResponse = await fetch(searchUrl);
+      const videosData = await searchResponse.json();
+      
+      if (!videosData.items || videosData.items.length === 0) {
+        return res.json({ success: true, data: [] });
+      }
+
+      const videoIds = videosData.items.map(item => item.id.videoId).join(',');
+      const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?key=${YOUTUBE_API_KEY}&id=${videoIds}&part=contentDetails,statistics,snippet`;
+      const detailsResponse = await fetch(detailsUrl);
+      const detailsData = await detailsResponse.json();
+
+      const processedVideos = detailsData.items.map(item => {
+        const duration = item.contentDetails?.duration || '';
+        const isShort = duration.includes('M') ? false : (parseInt(duration.replace(/[^0-9]/g, '')) < 60);
+        
+        return {
+          id: item.id,
+          type: 'youtube',
+          videoId: item.id,
+          title: item.snippet?.title || '',
+          description: item.snippet?.description || '',
+          thumbnail: item.snippet?.thumbnails?.maxres?.url || item.snippet?.thumbnails?.high?.url || '',
+          channelTitle: item.snippet?.channelTitle || 'Velotax',
+          viewCount: item.statistics?.viewCount || '0',
+          publishedAt: item.snippet?.publishedAt || new Date().toISOString(),
+          isShort: isShort
+        };
+      });
+
+      return res.json({ success: true, data: processedVideos });
+    }
+
     // Buscar vídeos do canal (últimos 50)
-    const videosUrl = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet&order=date&maxResults=50&type=video`;
+    const videosUrl = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${channelId}&part=snippet&order=date&maxResults=50&type=video`;
     const videosResponse = await fetch(videosUrl);
     const videosData = await videosResponse.json();
 

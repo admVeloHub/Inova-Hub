@@ -27,9 +27,11 @@ const config = {
   
   // Feed Social (YouTube e Instagram)
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY || '', // Chave da API do YouTube
-  YOUTUBE_CHANNEL_ID: process.env.YOUTUBE_CHANNEL_ID || '', // ID do canal YouTube da Velotax
+  YOUTUBE_CHANNEL_ID: process.env.YOUTUBE_CHANNEL_ID || '', // ID do canal YouTube da Velotax (opcional, pode usar username)
+  YOUTUBE_USERNAME: process.env.YOUTUBE_USERNAME || '@canalvelotax', // Username do canal (@canalvelotax)
   INSTAGRAM_ACCESS_TOKEN: process.env.INSTAGRAM_ACCESS_TOKEN || '', // Token de acesso do Instagram
-  INSTAGRAM_USER_ID: process.env.INSTAGRAM_USER_ID || '' // ID do usuário Instagram
+  INSTAGRAM_USER_ID: process.env.INSTAGRAM_USER_ID || '', // ID do usuário Instagram
+  INSTAGRAM_USERNAME: process.env.INSTAGRAM_USERNAME || 'velo_tax' // Username do Instagram (velo_tax)
 };
 
 // Definir variáveis de ambiente se não estiverem definidas
