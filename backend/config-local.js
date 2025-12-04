@@ -26,7 +26,7 @@ const config = {
   WHATSAPP_DEFAULT_JID: process.env.WHATSAPP_DEFAULT_JID || process.env.WHATSAPP_JID || '120363400851545835@g.us',
   
   // Feed Social (YouTube e Instagram)
-  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY || '', // Chave da API do YouTube
+  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY || 'AIzaSyBA52XVYRzT4l19qwRv0WK3vmVfxUecAFc', // Chave da API do YouTube
   YOUTUBE_CHANNEL_ID: process.env.YOUTUBE_CHANNEL_ID || '', // ID do canal YouTube da Velotax (opcional, pode usar username)
   YOUTUBE_USERNAME: process.env.YOUTUBE_USERNAME || '@canalvelotax', // Username do canal (@canalvelotax)
   INSTAGRAM_ACCESS_TOKEN: process.env.INSTAGRAM_ACCESS_TOKEN || '', // Token de acesso do Instagram
