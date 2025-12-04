@@ -572,14 +572,51 @@ app.post('/api/velo-news', async (req, res) => {
     const db = client.db('console_conteudo');
     const collection = db.collection('Velonews');
 
+    // Processar imagens: manter formato completo (com data:image) para compatibilidade
+    const processedImages = Array.isArray(images) ? images.map(img => {
+      if (typeof img === 'string') {
+        // Se já é string, manter como está
+        return img;
+      }
+      // Se é objeto, manter estrutura completa
+      return {
+        data: img.data || img,
+        name: img.name || 'imagem.jpg',
+        type: img.type || 'image/jpeg',
+        size: img.size || 0
+      };
+    }) : [];
+
+    // Processar vídeos: manter formato completo
+    const processedVideos = Array.isArray(videos) ? videos.map(vid => {
+      if (typeof vid === 'string') {
+        return vid;
+      }
+      // Se é YouTube embed
+      if (vid.type === 'youtube' || vid.embed) {
+        return {
+          embed: vid.embed || vid.url,
+          url: vid.url || vid.embed,
+          type: 'youtube'
+        };
+      }
+      // Se é vídeo base64
+      return {
+        data: vid.data || vid,
+        name: vid.name || 'video.mp4',
+        type: vid.type || 'video/mp4',
+        size: vid.size || 0
+      };
+    }) : [];
+
     const now = new Date();
     const noticia = {
       titulo: String(titulo).trim(),
       conteudo: String(conteudo).trim(),
       isCritical: isCritical === true || isCritical === 'Y',
       solved: solved === true || solved === 'true',
-      images: Array.isArray(images) ? images : [],
-      videos: Array.isArray(videos) ? videos : [],
+      images: processedImages,
+      videos: processedVideos,
       createdAt: now,
       updatedAt: now
     };
@@ -636,8 +673,39 @@ app.put('/api/velo-news/:id', async (req, res) => {
     if (conteudo !== undefined) updateData.conteudo = String(conteudo).trim();
     if (isCritical !== undefined) updateData.isCritical = isCritical === true || isCritical === 'Y';
     if (solved !== undefined) updateData.solved = solved === true || solved === 'true';
-    if (images !== undefined) updateData.images = Array.isArray(images) ? images : [];
-    if (videos !== undefined) updateData.videos = Array.isArray(videos) ? videos : [];
+    
+    // Processar imagens se fornecidas
+    if (images !== undefined) {
+      updateData.images = Array.isArray(images) ? images.map(img => {
+        if (typeof img === 'string') return img;
+        return {
+          data: img.data || img,
+          name: img.name || 'imagem.jpg',
+          type: img.type || 'image/jpeg',
+          size: img.size || 0
+        };
+      }) : [];
+    }
+    
+    // Processar vídeos se fornecidos
+    if (videos !== undefined) {
+      updateData.videos = Array.isArray(videos) ? videos.map(vid => {
+        if (typeof vid === 'string') return vid;
+        if (vid.type === 'youtube' || vid.embed) {
+          return {
+            embed: vid.embed || vid.url,
+            url: vid.url || vid.embed,
+            type: 'youtube'
+          };
+        }
+        return {
+          data: vid.data || vid,
+          name: vid.name || 'video.mp4',
+          type: vid.type || 'video/mp4',
+          size: vid.size || 0
+        };
+      }) : [];
+    }
 
     const result = await collection.updateOne(filter, { $set: updateData });
 

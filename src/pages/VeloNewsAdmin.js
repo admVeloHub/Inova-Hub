@@ -78,6 +78,8 @@ const VeloNewsAdmin = () => {
 
       const reader = new FileReader();
       reader.onloadend = () => {
+        // Manter o formato completo com data:image para exibição no frontend
+        // O backend vai processar e salvar como necessário
         newImages.push({
           data: reader.result, // Base64 completo (data:image/jpeg;base64,...)
           name: file.name,

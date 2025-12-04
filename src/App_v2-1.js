@@ -828,6 +828,7 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
     const [lastRefresh, setLastRefresh] = useState(Date.now());
     const [lastCriticalNewsId, setLastCriticalNewsId] = useState(null);
     const [acknowledgedNewsIds, setAcknowledgedNewsIds] = useState([]);
+    const [expandedImage, setExpandedImage] = useState(null);
     
     // Estados dos módulos - controlados pelo Console VeloHub
     const [moduleStatus, setModuleStatus] = useState({
@@ -922,6 +923,27 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
     // Função para abrir modal de artigo
     const handleArticleClick = (article) => {
         setSelectedArticle(article);
+    };
+
+    // Função para obter URL da imagem (primeira imagem da notícia)
+    const getImageUrl = (news) => {
+      if (!news.images || !Array.isArray(news.images) || news.images.length === 0) {
+        return null;
+      }
+      
+      const firstImage = news.images[0];
+      if (typeof firstImage === 'string') {
+        // Se já é uma string base64 completa
+        return firstImage.includes('data:') ? firstImage : `data:image/jpeg;base64,${firstImage}`;
+      }
+      
+      // Se é um objeto com propriedade data
+      const imageData = firstImage.data || firstImage;
+      if (typeof imageData === 'string') {
+        return imageData.includes('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
+      }
+      
+      return null;
     };
 
     // Função para renderizar status do módulo
@@ -1572,6 +1594,23 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                                         </div>
                                     </div>
                                     
+                                    {/* Renderizar primeira imagem se existir */}
+                                    {getImageUrl(news) && (
+                                        <div className="mb-3">
+                                            <img 
+                                                src={getImageUrl(news)} 
+                                                alt={news.title}
+                                                className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                                style={{
+                                                    maxHeight: '300px',
+                                                    objectFit: 'cover',
+                                                    border: isCritical && !shouldRemoveHighlight ? '2px solid #ef4444' : '1px solid #e5e7eb'
+                                                }}
+                                                onClick={() => setExpandedImage(getImageUrl(news))}
+                                            />
+                                        </div>
+                                    )}
+                                    
                                     <div 
                                         className={`text-gray-600 dark:text-gray-400 line-clamp-3 mb-2 prose prose-sm dark:prose-invert max-w-none ${isSolved ? 'solved-news-content' : ''}`}
                                         dangerouslySetInnerHTML={{ __html: news.content || '' }}
@@ -1654,17 +1693,91 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                 </div>
             </aside>
             {selectedNews && (
-                 <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50" onClick={() => setSelectedNews(null)}>
-                                         <div className="rounded-lg shadow-2xl p-8 max-w-2xl w-full mx-4 bg-white dark:bg-gray-800" onClick={e => e.stopPropagation()} style={{borderRadius: '12px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'}}>
-                        <div className="flex justify-between items-center mb-4">
-                           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{selectedNews.title}</h2>
-                           <button onClick={() => setSelectedNews(null)} className="text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white text-3xl">&times;</button>
+                 <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={() => setSelectedNews(null)}>
+                    <div className="rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] bg-white dark:bg-gray-800 flex flex-col overflow-hidden" onClick={e => e.stopPropagation()} style={{borderRadius: '12px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'}}>
+                        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 pr-4">{selectedNews.title}</h2>
+                           <button onClick={() => setSelectedNews(null)} className="text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white text-3xl flex-shrink-0">&times;</button>
                         </div>
-                                                 <div 
-                             className="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
-                             dangerouslySetInnerHTML={{ __html: selectedNews.content || '' }}
-                         />
+                        
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {/* Renderizar todas as imagens */}
+                            {selectedNews.images && Array.isArray(selectedNews.images) && selectedNews.images.length > 0 && (
+                                <div className="mb-4 space-y-3">
+                                    {selectedNews.images.map((img, idx) => {
+                                        const imageUrl = typeof img === 'string' 
+                                            ? (img.includes('data:') ? img : `data:image/jpeg;base64,${img}`)
+                                            : (img.data?.includes('data:') ? img.data : `data:image/jpeg;base64,${img.data || img}`);
+                                        
+                                        return (
+                                            <div key={idx} className="relative">
+                                                <img 
+                                                    src={imageUrl} 
+                                                    alt={`${selectedNews.title} - Imagem ${idx + 1}`}
+                                                    className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                                    style={{ maxHeight: '400px', objectFit: 'contain' }}
+                                                    onClick={() => setExpandedImage(imageUrl)}
+                                                />
+                                                <div className="text-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                                    Clique para expandir
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            
+                            {/* Renderizar vídeos do YouTube */}
+                            {selectedNews.videos && Array.isArray(selectedNews.videos) && selectedNews.videos.length > 0 && (
+                                <div className="mb-4 space-y-3">
+                                    {selectedNews.videos.map((vid, idx) => {
+                                        if (vid.type === 'youtube' || vid.embed) {
+                                            const embedUrl = vid.embed || vid.url;
+                                            return (
+                                                <div key={idx} className="relative w-full" style={{ paddingBottom: '56.25%', height: 0 }}>
+                                                    <iframe
+                                                        src={embedUrl}
+                                                        className="absolute top-0 left-0 w-full h-full rounded-lg"
+                                                        frameBorder="0"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                    />
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })}
+                                </div>
+                            )}
+                            
+                            <div 
+                                className="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
+                                dangerouslySetInnerHTML={{ __html: selectedNews.content || '' }}
+                            />
+                        </div>
                     </div>
+                </div>
+            )}
+            
+            {/* Modal de imagem expandida */}
+            {expandedImage && (
+                <div 
+                    className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[60] p-4"
+                    onClick={() => setExpandedImage(null)}
+                >
+                    <button 
+                        onClick={() => setExpandedImage(null)}
+                        className="absolute top-4 right-4 text-white hover:text-gray-300 text-4xl z-10"
+                        style={{ fontSize: '2rem' }}
+                    >
+                        &times;
+                    </button>
+                    <img 
+                        src={expandedImage} 
+                        alt="Imagem expandida"
+                        className="max-w-full max-h-full object-contain rounded-lg"
+                        onClick={e => e.stopPropagation()}
+                    />
                 </div>
             )}
 
