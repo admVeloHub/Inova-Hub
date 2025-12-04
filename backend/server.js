@@ -787,9 +787,17 @@ app.delete('/api/velo-news/:id', async (req, res) => {
 // GET /api/feed/youtube - Buscar vídeos do canal YouTube
 app.get('/api/feed/youtube', async (req, res) => {
   try {
-    const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-    const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID;
-    const YOUTUBE_USERNAME = process.env.YOUTUBE_USERNAME || '@canalvelotax'; // Username do canal
+    console.log('📹 [YOUTUBE FEED] Requisição recebida');
+    const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || config.YOUTUBE_API_KEY;
+    const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || config.YOUTUBE_CHANNEL_ID;
+    const YOUTUBE_USERNAME = process.env.YOUTUBE_USERNAME || config.YOUTUBE_USERNAME || '@canalvelotax'; // Username do canal
+    
+    console.log('📹 [YOUTUBE FEED] Configuração:', {
+      hasApiKey: !!YOUTUBE_API_KEY,
+      apiKeyLength: YOUTUBE_API_KEY?.length || 0,
+      channelId: YOUTUBE_CHANNEL_ID || 'não configurado',
+      username: YOUTUBE_USERNAME
+    });
     
     if (!YOUTUBE_API_KEY) {
       console.warn('⚠️ YouTube API Key não configurada - retornando dados mock');
