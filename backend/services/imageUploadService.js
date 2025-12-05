@@ -84,12 +84,19 @@ const initializeStorage = () => {
  * @returns {Promise<{url: string, path: string}>} URL pública e caminho do arquivo
  */
 const uploadImageToGCS = async (base64Data, fileName, mimeType = 'image/jpeg', folder = 'img_velonews') => {
+  console.log(`📤 [uploadImageToGCS] Iniciando upload: ${fileName}, tipo: ${mimeType}, pasta: ${folder}`);
+  console.log(`📤 [uploadImageToGCS] base64Data length: ${base64Data?.length || 0}`);
+  
   // Inicializar se ainda não foi inicializado
   if (!storageInitialized) {
+    console.log('🔄 [uploadImageToGCS] Inicializando storage...');
     initializeStorage();
   }
   
+  console.log(`🔍 [uploadImageToGCS] storageInitialized: ${storageInitialized}, bucket: ${!!bucket}`);
+  
   if (!bucket) {
+    console.error('❌ [uploadImageToGCS] Bucket não inicializado!');
     throw new Error('Google Cloud Storage não inicializado. Configure GCS_BUCKET_NAME2.');
   }
 
@@ -142,12 +149,21 @@ const uploadImageToGCS = async (base64Data, fileName, mimeType = 'image/jpeg', f
  * @returns {Promise<Array>} Array de URLs públicas
  */
 const uploadMultipleImages = async (images, folder = 'img_velonews') => {
+  console.log(`📤 [uploadMultipleImages] Iniciando upload de ${images?.length || 0} imagem(ns)`);
+  
   if (!Array.isArray(images) || images.length === 0) {
+    console.warn('⚠️ [uploadMultipleImages] Array vazio ou inválido');
     return [];
   }
 
-  const uploadPromises = images.map(async (img) => {
+  const uploadPromises = images.map(async (img, idx) => {
     try {
+      console.log(`📤 [uploadMultipleImages] Processando imagem ${idx + 1}/${images.length}:`, {
+        type: typeof img,
+        hasData: !!(img && typeof img === 'object' && img.data),
+        dataLength: (img && typeof img === 'object' && img.data) ? img.data.length : 0,
+        name: img?.name || 'sem nome'
+      });
       // Se já é um caminho relativo (string), retornar como está
       if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/'))) {
         const cleanPath = img.startsWith('/') ? img.substring(1) : img;

@@ -588,6 +588,19 @@ app.get('/api/velo-news', async (req, res) => {
 // POST /api/velo-news - Criar nova notícia
 app.post('/api/velo-news', async (req, res) => {
   try {
+    console.log('📥 [POST /api/velo-news] Requisição recebida');
+    console.log('📦 [POST] Body recebido:', JSON.stringify({
+      titulo: req.body.titulo,
+      hasImages: !!req.body.images,
+      imagesCount: Array.isArray(req.body.images) ? req.body.images.length : 0,
+      imagesType: Array.isArray(req.body.images) && req.body.images.length > 0 ? typeof req.body.images[0] : 'N/A',
+      firstImageSample: Array.isArray(req.body.images) && req.body.images.length > 0 ? 
+        (typeof req.body.images[0] === 'object' ? 
+          { hasData: !!req.body.images[0].data, name: req.body.images[0].name, dataLength: req.body.images[0].data?.length || 0 } : 
+          { type: typeof req.body.images[0], length: req.body.images[0]?.length || 0 }
+        ) : null
+    }, null, 2));
+    
     if (!client) {
       return res.status(503).json({
         success: false,
@@ -597,6 +610,9 @@ app.post('/api/velo-news', async (req, res) => {
     }
 
     const { titulo, conteudo, isCritical, solved, images, videos } = req.body;
+    
+    console.log('🔍 [POST] imageUploadService disponível?', !!imageUploadService);
+    console.log('🔍 [POST] images recebido:', Array.isArray(images) ? `${images.length} item(ns)` : typeof images);
 
     if (!titulo || !conteudo) {
       return res.status(400).json({
@@ -687,22 +703,41 @@ app.post('/api/velo-news', async (req, res) => {
         });
 
         // Fazer upload das imagens que precisam
+        console.log(`📊 Resumo do processamento: ${imagesToUpload.length} para upload, ${existingPaths.length} existentes`);
+        
         if (imagesToUpload.length > 0) {
-          if (imageUploadService) {
+          console.log('🔍 Verificando imageUploadService...');
+          console.log('   - imageUploadService existe?', !!imageUploadService);
+          console.log('   - imageUploadService.uploadMultipleImages existe?', !!(imageUploadService && imageUploadService.uploadMultipleImages));
+          
+          if (imageUploadService && imageUploadService.uploadMultipleImages) {
             try {
               console.log(`📤 Fazendo upload de ${imagesToUpload.length} imagem(ns) para GCS...`);
+              console.log('📦 Dados das imagens a enviar:', imagesToUpload.map(img => ({
+                hasData: !!img.data,
+                dataLength: img.data?.length || 0,
+                name: img.name,
+                type: img.type
+              })));
+              
               const uploadedImages = await imageUploadService.uploadMultipleImages(imagesToUpload, 'img_velonews');
+              console.log('📥 Resultado do upload:', uploadedImages);
               processedImages = [...existingPaths, ...uploadedImages];
               console.log(`✅ Upload concluído: ${uploadedImages.length} nova(s) imagem(ns) + ${existingPaths.length} existente(s)`);
+              console.log('📋 Caminhos finais processados:', processedImages);
             } catch (uploadError) {
               console.error('❌ Erro ao fazer upload de imagens:', uploadError);
-              console.error('Stack:', uploadError.stack);
+              console.error('❌ Tipo do erro:', uploadError.constructor.name);
+              console.error('❌ Mensagem:', uploadError.message);
+              console.error('❌ Stack:', uploadError.stack);
               // Em caso de erro, retornar apenas os caminhos existentes
               processedImages = existingPaths;
-              throw uploadError; // Re-throw para o catch externo tratar
+              // NÃO fazer throw - continuar salvando a notícia mesmo sem as imagens novas
+              console.warn('⚠️ Continuando sem as imagens novas devido ao erro de upload');
             }
           } else {
-            console.warn('⚠️ imageUploadService não disponível - usando apenas imagens existentes');
+            console.error('❌ imageUploadService não disponível ou uploadMultipleImages não existe!');
+            console.error('   - imageUploadService:', imageUploadService);
             processedImages = existingPaths;
           }
         } else {
