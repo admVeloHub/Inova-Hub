@@ -642,9 +642,23 @@ app.post('/api/velo-news', async (req, res) => {
           }).filter(img => img !== null && typeof img === 'string');
 
           // Fazer upload das imagens que precisam
-          if (imagesToUpload.length > 0) {
-            const uploadedImages = await imageUploadService.uploadMultipleImages(imagesToUpload, 'img_velonews');
-            processedImages = [...existingPaths, ...uploadedImages];
+          if (imagesToUpload.length > 0 && imageUploadService) {
+            try {
+              const uploadedImages = await imageUploadService.uploadMultipleImages(imagesToUpload, 'img_velonews');
+              processedImages = [...existingPaths, ...uploadedImages];
+            } catch (uploadError) {
+              console.error('❌ Erro ao fazer upload de imagens (mantendo formato original):', uploadError);
+              // Em caso de erro, manter formato original
+              processedImages = Array.isArray(images) ? images.map(img => {
+                if (typeof img === 'string') return img;
+                return {
+                  data: img.data || img,
+                  name: img.name || 'imagem.jpg',
+                  type: img.type || 'image/jpeg',
+                  size: img.size || 0
+                };
+              }) : [];
+            }
           } else {
             processedImages = existingPaths;
           }
@@ -803,9 +817,23 @@ app.put('/api/velo-news/:id', async (req, res) => {
           }).filter(img => img !== null && typeof img === 'string');
 
           // Fazer upload das imagens que precisam
-          if (imagesToUpload.length > 0) {
-            const uploadedImages = await imageUploadService.uploadMultipleImages(imagesToUpload, 'img_velonews');
-            processedImages = [...existingPaths, ...uploadedImages];
+          if (imagesToUpload.length > 0 && imageUploadService) {
+            try {
+              const uploadedImages = await imageUploadService.uploadMultipleImages(imagesToUpload, 'img_velonews');
+              processedImages = [...existingPaths, ...uploadedImages];
+            } catch (uploadError) {
+              console.error('❌ Erro ao fazer upload de imagens (mantendo formato original):', uploadError);
+              // Em caso de erro, manter formato original
+              processedImages = Array.isArray(images) ? images.map(img => {
+                if (typeof img === 'string') return img;
+                return {
+                  data: img.data || img,
+                  name: img.name || 'imagem.jpg',
+                  type: img.type || 'image/jpeg',
+                  size: img.size || 0
+                };
+              }) : [];
+            }
           } else {
             processedImages = existingPaths;
           }
