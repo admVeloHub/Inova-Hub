@@ -1,6 +1,6 @@
 /**
  * VeloHub V3 - Backend Server
- * VERSION: v2.31.7 | DATE: 2025-01-30 | AUTHOR: VeloHub Development Team
+ * VERSION: v2.31.8 | DATE: 2025-01-30 | AUTHOR: VeloHub Development Team
  */
 
 // LOG IMEDIATO - GARANTIR QUE O CÓDIGO ESTÁ SENDO EXECUTADO
@@ -1730,29 +1730,20 @@ app.post('/api/feed/youtube/like', async (req, res) => {
           response: youtubeError.response?.data,
           errors: youtubeError.errors
         });
+        
+        // Se for erro de permissão, pedir reautenticação
+        if (youtubeError.code === 403 || youtubeError.code === 401) {
+          const baseUrl = config.INOVA_HUB_API_URL || process.env.INOVA_HUB_API_URL || 'http://localhost:8090';
+          return res.status(401).json({
+            success: false,
+            message: 'Permissão negada. Por favor, reautorize o acesso ao YouTube.',
+            requiresAuth: true,
+            authUrl: `${baseUrl}/api/feed/youtube/oauth?userId=${userId}`
+          });
+        }
+        
         throw youtubeError;
       }
-    } catch (rateError) {
-      // Erro específico ao dar like
-      console.error('❌ [YOUTUBE LIKE] Erro ao executar rate:', rateError);
-      console.error('❌ [YOUTUBE LIKE] Detalhes:', {
-        code: rateError.code,
-        message: rateError.message,
-        response: rateError.response?.data
-      });
-      
-      // Se for erro de permissão, pedir reautenticação
-      if (rateError.code === 403 || rateError.code === 401) {
-        const baseUrl = config.INOVA_HUB_API_URL || process.env.INOVA_HUB_API_URL || 'http://localhost:8090';
-        return res.status(401).json({
-          success: false,
-          message: 'Permissão negada. Por favor, reautorize o acesso ao YouTube.',
-          requiresAuth: true,
-          authUrl: `${baseUrl}/api/feed/youtube/oauth?userId=${userId}`
-        });
-      }
-      
-      throw rateError;
     }
   } catch (error) {
     console.error('❌ [YOUTUBE LIKE] Erro geral ao dar like no YouTube:', error);
