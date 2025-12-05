@@ -802,12 +802,14 @@ app.post('/api/velo-news', async (req, res) => {
       titulo: noticia.titulo,
       media: noticia.media,
       imagesCount: noticia.media.images.length,
-      videosCount: noticia.media.videos.length
+      videosCount: noticia.media.videos.length,
+      imagesSample: noticia.media.images.slice(0, 3) // Mostrar primeiras 3 imagens
     }, null, 2));
 
     const result = await collection.insertOne(noticia);
 
     console.log(`✅ Notícia criada: ${result.insertedId}`);
+    console.log('📋 Imagens salvas no MongoDB:', noticia.media.images);
 
     res.status(201).json({
       success: true,

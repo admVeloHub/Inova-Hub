@@ -224,6 +224,17 @@ const VeloNewsAdmin = () => {
         updatedAt: new Date().toISOString()
       };
 
+      console.log('📤 [Frontend] Enviando payload:', {
+        titulo: payload.titulo,
+        imagesCount: imagesArray.length,
+        imagesSample: imagesArray.length > 0 ? {
+          type: typeof imagesArray[0],
+          hasData: !!(imagesArray[0] && typeof imagesArray[0] === 'object' && imagesArray[0].data),
+          dataLength: (imagesArray[0] && typeof imagesArray[0] === 'object' && imagesArray[0].data) ? imagesArray[0].data.length : 0,
+          name: imagesArray[0]?.name || 'sem nome'
+        } : null
+      });
+
       let response;
       if (editingId) {
         // Atualizar
@@ -243,11 +254,19 @@ const VeloNewsAdmin = () => {
 
       const result = await response.json();
       
+      console.log('📥 [Frontend] Resposta do servidor:', {
+        success: result.success,
+        message: result.message,
+        hasData: !!result.data,
+        dataImagesCount: result.data?.media?.images?.length || result.data?.images?.length || 0
+      });
+      
       if (result.success || response.ok) {
         setMessage({ type: 'success', text: editingId ? 'Notícia atualizada!' : 'Notícia criada!' });
         limparFormulario();
         carregarNoticias();
       } else {
+        console.error('❌ [Frontend] Erro ao salvar:', result);
         setMessage({ type: 'error', text: result.message || 'Erro ao salvar' });
       }
     } catch (error) {
