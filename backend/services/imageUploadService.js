@@ -6,7 +6,21 @@
  * e retorna URLs públicas para armazenamento no MongoDB
  */
 
-const { Storage } = require('@google-cloud/storage');
+// NÃO fazer require do @google-cloud/storage no topo - fazer lazy loading
+// Isso evita erros se a dependência não estiver disponível
+let Storage = null;
+const getStorage = () => {
+  if (!Storage) {
+    try {
+      Storage = require('@google-cloud/storage').Storage;
+    } catch (error) {
+      console.warn('⚠️ @google-cloud/storage não disponível:', error.message);
+      return null;
+    }
+  }
+  return Storage;
+};
+
 const config = require('../config');
 const localConfig = require('../config-local');
 
@@ -33,7 +47,11 @@ const initializeStorage = () => {
     // Inicializar Storage (usa credenciais do ambiente ou service account)
     // Em produção no Cloud Run, as credenciais são automáticas
     try {
-      storage = new Storage({
+      const StorageClass = getStorage();
+      if (!StorageClass) {
+        throw new Error('@google-cloud/storage não disponível');
+      }
+      storage = new StorageClass({
         // Se houver variável de ambiente GOOGLE_APPLICATION_CREDENTIALS, será usada automaticamente
         // Caso contrário, tenta usar as credenciais padrão do GCP (Cloud Run tem isso automaticamente)
       });
