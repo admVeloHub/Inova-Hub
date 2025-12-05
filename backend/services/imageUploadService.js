@@ -13,36 +13,49 @@ const localConfig = require('../config-local');
 // Inicializar Google Cloud Storage
 let storage = null;
 let bucket = null;
+let storageInitialized = false;
 
 const initializeStorage = () => {
+  // Se já foi inicializado, retornar o bucket existente
+  if (storageInitialized) {
+    return bucket;
+  }
+  
   try {
     const bucketName = process.env.GCS_BUCKET_NAME2 || config.GCS_BUCKET_NAME2;
     
     if (!bucketName) {
       console.warn('⚠️ GCS_BUCKET_NAME2 não configurado. Upload de imagens desabilitado.');
+      storageInitialized = true;
       return null;
     }
 
     // Inicializar Storage (usa credenciais do ambiente ou service account)
-    storage = new Storage({
-      // Se houver variável de ambiente GOOGLE_APPLICATION_CREDENTIALS, será usada automaticamente
-      // Caso contrário, tenta usar as credenciais padrão do GCP
-    });
+    // Em produção no Cloud Run, as credenciais são automáticas
+    try {
+      storage = new Storage({
+        // Se houver variável de ambiente GOOGLE_APPLICATION_CREDENTIALS, será usada automaticamente
+        // Caso contrário, tenta usar as credenciais padrão do GCP (Cloud Run tem isso automaticamente)
+      });
 
-    bucket = storage.bucket(bucketName);
-    console.log(`✅ Google Cloud Storage inicializado. Bucket: ${bucketName}`);
-    
-    return bucket;
+      bucket = storage.bucket(bucketName);
+      console.log(`✅ Google Cloud Storage inicializado. Bucket: ${bucketName}`);
+      storageInitialized = true;
+      return bucket;
+    } catch (storageError) {
+      console.warn('⚠️ Erro ao inicializar Google Cloud Storage (continuando sem upload de imagens):', storageError.message);
+      storageInitialized = true;
+      return null;
+    }
   } catch (error) {
-    console.error('❌ Erro ao inicializar Google Cloud Storage:', error);
+    console.warn('⚠️ Erro ao inicializar Google Cloud Storage (continuando sem upload de imagens):', error.message);
+    storageInitialized = true;
     return null;
   }
 };
 
-// Inicializar na primeira chamada
-if (!bucket) {
-  bucket = initializeStorage();
-}
+// NÃO inicializar automaticamente - apenas quando necessário (lazy loading)
+// Isso evita erros na inicialização do servidor
 
 /**
  * Faz upload de uma imagem em base64 para o GCS
@@ -53,6 +66,11 @@ if (!bucket) {
  * @returns {Promise<{url: string, path: string}>} URL pública e caminho do arquivo
  */
 const uploadImageToGCS = async (base64Data, fileName, mimeType = 'image/jpeg', folder = 'img_velonews') => {
+  // Inicializar se ainda não foi inicializado
+  if (!storageInitialized) {
+    initializeStorage();
+  }
+  
   if (!bucket) {
     throw new Error('Google Cloud Storage não inicializado. Configure GCS_BUCKET_NAME2.');
   }
@@ -166,6 +184,11 @@ const uploadMultipleImages = async (images, folder = 'img_velonews') => {
  * @returns {Promise<boolean>} true se deletado com sucesso
  */
 const deleteImageFromGCS = async (filePath) => {
+  // Inicializar se ainda não foi inicializado
+  if (!storageInitialized) {
+    initializeStorage();
+  }
+  
   if (!bucket) {
     throw new Error('Google Cloud Storage não inicializado.');
   }
