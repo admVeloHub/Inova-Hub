@@ -1658,9 +1658,9 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                                     
                                     {/* Renderizar primeira imagem ou vídeo se existir */}
                                     {getImageUrl(news) ? (
-                                        <div className="mb-3 flex justify-center">
-                                            <div className="relative" style={{ 
-                                                maxWidth: '450px', 
+                                        <div className="mb-3">
+                                            <div className="relative inline-block" style={{ 
+                                                maxWidth: '280px', 
                                                 width: '100%',
                                                 borderRadius: '8px',
                                                 overflow: 'hidden',
@@ -1671,12 +1671,15 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                                                     alt={news.title}
                                                     className="w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
                                                     style={{
-                                                        maxHeight: '180px',
+                                                        maxHeight: '120px',
                                                         width: '100%',
                                                         objectFit: 'cover',
                                                         display: 'block'
                                                     }}
                                                     onClick={() => setExpandedImage(getImageUrl(news))}
+                                                    onError={(e) => {
+                                                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="280" height="120"%3E%3Crect width="280" height="120" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-family="Arial" font-size="12"%3EImagem não encontrada%3C/text%3E%3C/svg%3E';
+                                                    }}
                                                 />
                                             </div>
                                         </div>
