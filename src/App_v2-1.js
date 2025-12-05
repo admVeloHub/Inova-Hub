@@ -935,15 +935,43 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
       }
       
       const firstImage = news.images[0];
-      if (typeof firstImage === 'string') {
-        // Se já é uma string base64 completa
-        return firstImage.includes('data:') ? firstImage : `data:image/jpeg;base64,${firstImage}`;
+      
+      // Se é caminho relativo (formato novo: "img_velonews/123.jpg")
+      if (typeof firstImage === 'string' && (firstImage.startsWith('img_velonews/') || firstImage.startsWith('/img_velonews/'))) {
+        const cleanPath = firstImage.startsWith('/') ? firstImage.substring(1) : firstImage;
+        // Usar endpoint do backend que redireciona para o GCS
+        return `${API_BASE_URL}/images/${cleanPath}`;
       }
       
-      // Se é um objeto com propriedade data
-      const imageData = firstImage.data || firstImage;
-      if (typeof imageData === 'string') {
-        return imageData.includes('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
+      // Se é objeto com path (compatibilidade temporária)
+      if (firstImage && typeof firstImage === 'object' && firstImage.path) {
+        const cleanPath = firstImage.path.startsWith('/') ? firstImage.path.substring(1) : firstImage.path;
+        return `${API_BASE_URL}/images/${cleanPath}`;
+      }
+      
+      // Se é URL completa (compatibilidade com dados antigos)
+      if (typeof firstImage === 'string' && firstImage.startsWith('http')) {
+        return firstImage;
+      }
+      
+      if (firstImage && typeof firstImage === 'object' && firstImage.url && firstImage.url.startsWith('http')) {
+        return firstImage.url;
+      }
+      
+      // Se é base64 (compatibilidade com dados antigos)
+      if (typeof firstImage === 'string') {
+        // Verificar se é base64 (não começa com http e não é caminho relativo)
+        if (!firstImage.startsWith('http') && !firstImage.startsWith('img_velonews/')) {
+          return firstImage.includes('data:') ? firstImage : `data:image/jpeg;base64,${firstImage}`;
+        }
+      }
+      
+      // Se é um objeto com propriedade data (base64 antigo)
+      if (firstImage && typeof firstImage === 'object' && firstImage.data) {
+        const imageData = firstImage.data;
+        if (typeof imageData === 'string' && !imageData.startsWith('http') && !imageData.startsWith('img_velonews/')) {
+          return imageData.includes('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
+        }
       }
       
       return null;
@@ -1783,18 +1811,62 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                             {selectedNews.images && Array.isArray(selectedNews.images) && selectedNews.images.length > 0 && (
                                 <div className="mb-4 space-y-3">
                                     {selectedNews.images.map((img, idx) => {
-                                        const imageUrl = typeof img === 'string' 
-                                            ? (img.includes('data:') ? img : `data:image/jpeg;base64,${img}`)
-                                            : (img.data?.includes('data:') ? img.data : `data:image/jpeg;base64,${img.data || img}`);
+                                        // Função auxiliar para obter URL da imagem
+                                        const getImageUrlForModal = (image) => {
+                                            // Se é caminho relativo (formato novo: "img_velonews/123.jpg")
+                                            if (typeof image === 'string' && (image.startsWith('img_velonews/') || image.startsWith('/img_velonews/'))) {
+                                                const cleanPath = image.startsWith('/') ? image.substring(1) : image;
+                                                return `${API_BASE_URL}/images/${cleanPath}`;
+                                            }
+                                            
+                                            // Se é objeto com path
+                                            if (image && typeof image === 'object' && image.path) {
+                                                const cleanPath = image.path.startsWith('/') ? image.path.substring(1) : image.path;
+                                                return `${API_BASE_URL}/images/${cleanPath}`;
+                                            }
+                                            
+                                            // Se é URL completa
+                                            if (typeof image === 'string' && image.startsWith('http')) {
+                                                return image;
+                                            }
+                                            
+                                            if (image && typeof image === 'object' && image.url && image.url.startsWith('http')) {
+                                                return image.url;
+                                            }
+                                            
+                                            // Se é base64 (compatibilidade)
+                                            if (typeof image === 'string') {
+                                                if (!image.startsWith('http') && !image.startsWith('img_velonews/')) {
+                                                    return image.includes('data:') ? image : `data:image/jpeg;base64,${image}`;
+                                                }
+                                            }
+                                            
+                                            if (image && typeof image === 'object' && image.data) {
+                                                const imageData = image.data;
+                                                if (typeof imageData === 'string' && !imageData.startsWith('http') && !imageData.startsWith('img_velonews/')) {
+                                                    return imageData.includes('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
+                                                }
+                                            }
+                                            
+                                            return null;
+                                        };
+                                        
+                                        const imageUrl = getImageUrlForModal(img);
+                                        
+                                        if (!imageUrl) return null;
                                         
                                         return (
                                             <div key={idx} className="relative">
                                                 <img 
                                                     src={imageUrl} 
-                                                    alt={`${selectedNews.title} - Imagem ${idx + 1}`}
+                                                    alt={`${selectedNews.title || selectedNews.titulo} - Imagem ${idx + 1}`}
                                                     className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                                                     style={{ maxHeight: '400px', objectFit: 'contain' }}
                                                     onClick={() => setExpandedImage(imageUrl)}
+                                                    onError={(e) => {
+                                                        // Placeholder em caso de erro
+                                                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Crect width="400" height="200" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-family="Arial" font-size="14"%3EImagem não encontrada%3C/text%3E%3C/svg%3E';
+                                                    }}
                                                 />
                                                 <div className="text-center mt-2 text-sm text-gray-500 dark:text-gray-400">
                                                     Clique para expandir
