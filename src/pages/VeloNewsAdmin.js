@@ -15,6 +15,7 @@ import { API_BASE_URL } from '../config/api-config';
 const VeloNewsAdmin = () => {
   const [noticias, setNoticias] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [imageBaseUrl, setImageBaseUrl] = useState(null); // URL base do bucket GCS
   const [formData, setFormData] = useState({
     titulo: '',
     conteudo: '',
@@ -46,6 +47,19 @@ const VeloNewsAdmin = () => {
 
   useEffect(() => {
     carregarNoticias();
+    // Carregar configuração de imagens (URL base do bucket)
+    const carregarConfigImagens = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/images/config`);
+        const result = await response.json();
+        if (result.success && result.imageBaseUrl) {
+          setImageBaseUrl(result.imageBaseUrl);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configuração de imagens:', error);
+      }
+    };
+    carregarConfigImagens();
   }, []);
 
   // Extrair ID do YouTube
@@ -145,17 +159,32 @@ const VeloNewsAdmin = () => {
 
     setLoading(true);
     try {
-      // Preparar arrays de imagens e vídeos (apenas base64, sem prefixo data:)
+      // Preparar arrays de imagens: enviar caminhos relativos (strings) ou base64 para upload
       const imagesArray = formData.images.map(img => {
-        // Remover prefixo data:image/...;base64, se existir
-        const base64Data = img.data.includes(',') 
+        // Se já é caminho relativo (formato novo), enviar como string
+        if (img.path && (img.path.startsWith('img_velonews/') || img.path.startsWith('/img_velonews/'))) {
+          return img.path.startsWith('/') ? img.path.substring(1) : img.path; // Retornar apenas a string
+        }
+        // Se é string com caminho relativo, enviar como está
+        if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/'))) {
+          return img.startsWith('/') ? img.substring(1) : img; // Retornar apenas a string
+        }
+        // Se é URL completa antiga (compatibilidade), extrair path como string
+        if (img.url && img.url.startsWith('http')) {
+          const gcsMatch = img.url.match(/storage\.googleapis\.com\/[^\/]+\/(.+)$/);
+          if (gcsMatch) {
+            return gcsMatch[1]; // Retornar apenas a string do caminho
+          }
+        }
+        // Se é base64 (nova imagem), remover prefixo data:image/...;base64,
+        const base64Data = img.data && img.data.includes(',') 
           ? img.data.split(',')[1] 
-          : img.data;
+          : (img.data || '');
         return {
           data: base64Data,
-          name: img.name,
+          name: img.name || 'imagem.jpg',
           type: img.type || 'image/jpeg',
-          size: img.size
+          size: img.size || 0
         };
       });
 
@@ -229,17 +258,89 @@ const VeloNewsAdmin = () => {
     }
   };
 
+  // Função auxiliar para construir URL da imagem a partir do caminho relativo
+  const getImageUrl = (img) => {
+    // Se é caminho relativo (formato novo: string "img_velonews/123.jpg")
+    if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/'))) {
+      const cleanPath = img.startsWith('/') ? img.substring(1) : img;
+      // Construir URL completa usando a URL base do bucket
+      if (imageBaseUrl) {
+        return `${imageBaseUrl}/${cleanPath}`;
+      }
+      // Fallback: usar endpoint do backend
+      return `${API_BASE_URL}/images/${cleanPath}`;
+    }
+    // Se é objeto com path (compatibilidade temporária)
+    if (img && typeof img === 'object' && img.path && (img.path.startsWith('img_velonews/') || img.path.startsWith('/img_velonews/'))) {
+      const cleanPath = img.path.startsWith('/') ? img.path.substring(1) : img.path;
+      // Construir URL completa usando a URL base do bucket
+      if (imageBaseUrl) {
+        return `${imageBaseUrl}/${cleanPath}`;
+      }
+      // Fallback: usar endpoint do backend
+      return `${API_BASE_URL}/images/${cleanPath}`;
+    }
+    // Se é URL completa antiga (compatibilidade)
+    if (typeof img === 'string' && img.startsWith('http')) {
+      return img;
+    }
+    if (img.url && img.url.startsWith('http')) {
+      return img.url;
+    }
+    // Se é base64 (compatibilidade)
+    if (typeof img === 'string') {
+      return img.includes('data:') ? img : `data:image/jpeg;base64,${img}`;
+    }
+    if (img.data) {
+      return img.data.includes('data:') ? img.data : `data:image/jpeg;base64,${img.data}`;
+    }
+    return null;
+  };
+
   // Editar notícia
   const editarNoticia = (noticia) => {
-    // Converter imagens do banco para formato de preview (adicionar prefixo data: se necessário)
+    // Processar imagens: agora são strings (caminhos relativos) ou base64 (compatibilidade)
     const imagesPreview = (noticia.images || []).map(img => {
-      if (typeof img === 'string') {
-        // Se já é base64 completo
-        return img.includes('data:') ? img : `data:image/jpeg;base64,${img}`;
+      // Se é caminho relativo (formato novo) - string simples
+      if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/'))) {
+        const cleanPath = img.startsWith('/') ? img.substring(1) : img;
+        return { 
+          path: cleanPath, 
+          fileName: cleanPath.split('/').pop() || 'imagem.jpg',
+          isUrl: true 
+        };
       }
-      // Se é objeto com data
+      // Se é objeto com path (compatibilidade temporária)
+      if (img && typeof img === 'object' && img.path && (img.path.startsWith('img_velonews/') || img.path.startsWith('/img_velonews/'))) {
+        const cleanPath = img.path.startsWith('/') ? img.path.substring(1) : img.path;
+        return { 
+          path: cleanPath, 
+          fileName: img.fileName || cleanPath.split('/').pop() || 'imagem.jpg',
+          isUrl: true 
+        };
+      }
+      // Se é URL completa antiga (compatibilidade)
+      if (typeof img === 'string' && img.startsWith('http')) {
+        return { url: img, path: null, fileName: null, isUrl: true };
+      }
+      if (img.url && img.url.startsWith('http')) {
+        return { url: img.url, path: img.path || null, fileName: img.fileName || null, isUrl: true };
+      }
+      // Se é base64 (compatibilidade com dados antigos)
+      if (typeof img === 'string') {
+        const base64Data = img.includes('data:') ? img : `data:image/jpeg;base64,${img}`;
+        return { data: base64Data, name: 'imagem.jpg', type: 'image/jpeg', size: 0, isUrl: false };
+      }
+      // Se é objeto com data (base64)
       const base64Data = img.data || img;
-      return base64Data.includes('data:') ? base64Data : `data:image/jpeg;base64,${base64Data}`;
+      const fullBase64 = base64Data.includes('data:') ? base64Data : `data:image/jpeg;base64,${base64Data}`;
+      return {
+        data: fullBase64,
+        name: img.name || 'imagem.jpg',
+        type: img.type || 'image/jpeg',
+        size: img.size || 0,
+        isUrl: false
+      };
     });
 
     // Extrair URL do YouTube dos vídeos
@@ -250,12 +351,7 @@ const VeloNewsAdmin = () => {
       titulo: noticia.title || noticia.titulo || '',
       conteudo: noticia.content || noticia.conteudo || '',
       isCritical: noticia.is_critical === 'Y' || noticia.isCritical === true,
-      images: imagesPreview.map((img, idx) => ({
-        data: img,
-        name: noticia.images?.[idx]?.name || `imagem-${idx + 1}.jpg`,
-        type: noticia.images?.[idx]?.type || 'image/jpeg',
-        size: noticia.images?.[idx]?.size || 0
-      })),
+      images: imagesPreview,
       videos: (noticia.videos || []).filter(v => v.type !== 'youtube').map((vid, idx) => ({
         data: typeof vid === 'string' 
           ? (vid.includes('data:') ? vid : `data:video/mp4;base64,${vid}`)
@@ -406,22 +502,40 @@ const VeloNewsAdmin = () => {
                 />
                 {formData.images.length > 0 && (
                   <div className="mt-2 space-y-2">
-                    {formData.images.map((img, idx) => (
-                      <div key={idx} className="relative">
-                        <img
-                          src={img.data}
-                          alt={`Preview ${idx + 1}`}
-                          className="w-full h-32 object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={() => removerImagem(idx)}
-                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
-                        >
-                          ×
-                        </button>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{img.name}</p>
-                      </div>
-                    ))}
+                    {formData.images.map((img, idx) => {
+                      const imgSrc = getImageUrl(img);
+                      // Extrair nome do arquivo do path ou usar fallback
+                      const imgName = img.fileName || img.name || 
+                        (typeof img === 'string' && img.includes('/') ? img.split('/').pop() : null) ||
+                        (img.path ? img.path.split('/').pop() : null) ||
+                        `imagem-${idx + 1}.jpg`;
+                      return (
+                        <div key={idx} className="relative">
+                          {imgSrc ? (
+                            <img
+                              src={imgSrc}
+                              alt={`Preview ${idx + 1}`}
+                              className="w-full h-32 object-cover rounded-lg"
+                              onError={(e) => {
+                                // Placeholder em caso de erro ao carregar
+                                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Crect width="400" height="200" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-family="Arial" font-size="14"%3EImagem não encontrada%3C/text%3E%3C/svg%3E';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-32 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                              <span className="text-gray-500 dark:text-gray-400 text-sm">Placeholder</span>
+                            </div>
+                          )}
+                          <button
+                            onClick={() => removerImagem(idx)}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{imgName}</p>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -545,16 +659,25 @@ const VeloNewsAdmin = () => {
                     {noticia.images && Array.isArray(noticia.images) && noticia.images.length > 0 && (
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         {noticia.images.map((img, idx) => {
-                          const imgSrc = typeof img === 'string' 
-                            ? (img.includes('data:') ? img : `data:image/jpeg;base64,${img}`)
-                            : (img.data?.includes('data:') ? img.data : `data:image/jpeg;base64,${img.data || img}`);
+                          const imgSrc = getImageUrl(img);
                           return (
-                            <img
-                              key={idx}
-                              src={imgSrc}
-                              alt={`Imagem ${idx + 1}`}
-                              className="w-full h-24 object-cover rounded"
-                            />
+                            <div key={idx} className="relative">
+                              {imgSrc ? (
+                                <img
+                                  src={imgSrc}
+                                  alt={`Imagem ${idx + 1}`}
+                                  className="w-full h-24 object-cover rounded"
+                                  onError={(e) => {
+                                    // Placeholder em caso de erro ao carregar
+                                    e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="100"%3E%3Crect width="200" height="100" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-family="Arial" font-size="12"%3EImagem não encontrada%3C/text%3E%3C/svg%3E';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
+                                  <span className="text-gray-500 dark:text-gray-400 text-xs">Placeholder</span>
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                       </div>

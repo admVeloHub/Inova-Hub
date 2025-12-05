@@ -65,6 +65,9 @@ module.exports = {
   // Cache timeout para dados do chatbot (em ms)
   CHATBOT_CACHE_TIMEOUT: parseInt(process.env.CHATBOT_CACHE_TIMEOUT) || 300000,
   
+  // Google Cloud Storage
+  GCS_BUCKET_NAME2: process.env.GCS_BUCKET_NAME2,
+  
   // ===========================================
   // VALIDAÇÃO DE CONFIGURAÇÃO
   // ===========================================

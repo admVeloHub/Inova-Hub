@@ -39,7 +39,10 @@ const config = {
   YOUTUBE_USERNAME: process.env.YOUTUBE_USERNAME || '@canalvelotax', // Username do canal (@canalvelotax)
   INSTAGRAM_ACCESS_TOKEN: process.env.INSTAGRAM_ACCESS_TOKEN || '', // Token de acesso do Instagram
   INSTAGRAM_USER_ID: process.env.INSTAGRAM_USER_ID || '', // ID do usuário Instagram
-  INSTAGRAM_USERNAME: process.env.INSTAGRAM_USERNAME || 'velo_tax' // Username do Instagram (velo_tax)
+  INSTAGRAM_USERNAME: process.env.INSTAGRAM_USERNAME || 'velo_tax', // Username do Instagram (velo_tax)
+  
+  // Google Cloud Storage (para upload de imagens)
+  GCS_BUCKET_NAME2: process.env.GCS_BUCKET_NAME2 || '' // Nome do bucket GCS para imagens (img_velonews/)
 };
 
 // Definir variáveis de ambiente se não estiverem definidas

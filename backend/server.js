@@ -46,6 +46,9 @@ const localConfig = require('./config-local');
 // VERSION: v2.19.0 | DATE: 2025-01-10 | AUTHOR: VeloHub Development Team
 let aiService, searchService, sessionService, dataCache, userActivityLogger, botFeedbackService, responseFormatter, userSessionLogger;
 
+// Importar serviço de upload de imagens
+const imageUploadService = require('./services/imageUploadService');
+
 console.log('🔄 Iniciando carregamento de serviços...');
 
 try {
@@ -573,20 +576,81 @@ app.post('/api/velo-news', async (req, res) => {
     const db = client.db('console_conteudo');
     const collection = db.collection('Velonews');
 
-    // Processar imagens: manter formato completo (com data:image) para compatibilidade
-    const processedImages = Array.isArray(images) ? images.map(img => {
-      if (typeof img === 'string') {
-        // Se já é string, manter como está
-        return img;
+    // Processar imagens: fazer upload para GCS e salvar apenas URLs
+    let processedImages = [];
+    if (Array.isArray(images) && images.length > 0) {
+      try {
+        // Separar imagens que já são URLs das que precisam de upload
+        const imagesToUpload = images.filter(img => {
+          if (typeof img === 'string') {
+            // Se já é URL, não precisa fazer upload
+            return !img.startsWith('http');
+          }
+          // Se é objeto com URL, não precisa fazer upload
+          if (img.url && img.url.startsWith('http')) {
+            return false;
+          }
+          // Se tem data (base64), precisa fazer upload
+          return img.data || typeof img === 'string';
+        });
+
+          const existingPaths = images.filter(img => {
+            // Caminhos relativos (formato novo) - já são strings
+            if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/'))) return true;
+            // Objetos com path (compatibilidade temporária)
+            if (img.path && (img.path.startsWith('img_velonews/') || img.path.startsWith('/img_velonews/'))) return true;
+            // URLs completas antigas (compatibilidade)
+            if (typeof img === 'string' && img.startsWith('http')) return true;
+            if (img.url && img.url.startsWith('http')) return true;
+            return false;
+          }).map(img => {
+            // Caminho relativo (formato novo) - já é string, apenas limpar
+            if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/'))) {
+              return img.startsWith('/') ? img.substring(1) : img; // Retornar apenas a string
+            }
+            // Objeto com path - extrair apenas o path como string
+            if (img.path && (img.path.startsWith('img_velonews/') || img.path.startsWith('/img_velonews/'))) {
+              return img.path.startsWith('/') ? img.path.substring(1) : img.path; // Retornar apenas a string
+            }
+            // URL completa antiga - extrair path como string
+            if (typeof img === 'string' && img.startsWith('http')) {
+              const gcsMatch = img.match(/storage\.googleapis\.com\/[^\/]+\/(.+)$/);
+              if (gcsMatch) {
+                return gcsMatch[1]; // Retornar apenas a string do caminho
+              }
+            }
+            if (img.url && img.url.startsWith('http')) {
+              const gcsMatch = img.url.match(/storage\.googleapis\.com\/[^\/]+\/(.+)$/);
+              if (gcsMatch) {
+                return gcsMatch[1]; // Retornar apenas a string do caminho
+              }
+            }
+            return null;
+          }).filter(img => img !== null && typeof img === 'string');
+
+          // Fazer upload das imagens que precisam
+          if (imagesToUpload.length > 0) {
+            const uploadedImages = await imageUploadService.uploadMultipleImages(imagesToUpload, 'img_velonews');
+            processedImages = [...existingPaths, ...uploadedImages];
+          } else {
+            processedImages = existingPaths;
+          }
+
+        console.log(`✅ ${processedImages.length} imagem(ns) processada(s) para GCS`);
+      } catch (uploadError) {
+        console.error('❌ Erro ao fazer upload de imagens para GCS:', uploadError);
+        // Em caso de erro, manter formato antigo (compatibilidade)
+        processedImages = Array.isArray(images) ? images.map(img => {
+          if (typeof img === 'string') return img;
+          return {
+            data: img.data || img,
+            name: img.name || 'imagem.jpg',
+            type: img.type || 'image/jpeg',
+            size: img.size || 0
+          };
+        }) : [];
       }
-      // Se é objeto, manter estrutura completa
-      return {
-        data: img.data || img,
-        name: img.name || 'imagem.jpg',
-        type: img.type || 'image/jpeg',
-        size: img.size || 0
-      };
-    }) : [];
+    }
 
     // Processar vídeos: manter formato completo
     const processedVideos = Array.isArray(videos) ? videos.map(vid => {
@@ -675,17 +739,80 @@ app.put('/api/velo-news/:id', async (req, res) => {
     if (isCritical !== undefined) updateData.isCritical = isCritical === true || isCritical === 'Y';
     if (solved !== undefined) updateData.solved = solved === true || solved === 'true';
     
-    // Processar imagens se fornecidas
+    // Processar imagens se fornecidas: fazer upload para GCS e salvar apenas URLs
     if (images !== undefined) {
-      updateData.images = Array.isArray(images) ? images.map(img => {
-        if (typeof img === 'string') return img;
-        return {
-          data: img.data || img,
-          name: img.name || 'imagem.jpg',
-          type: img.type || 'image/jpeg',
-          size: img.size || 0
-        };
-      }) : [];
+      let processedImages = [];
+      if (Array.isArray(images) && images.length > 0) {
+        try {
+          // Separar imagens que já são URLs das que precisam de upload
+          const imagesToUpload = images.filter(img => {
+            if (typeof img === 'string') {
+              return !img.startsWith('http');
+            }
+            if (img.url && img.url.startsWith('http')) {
+              return false;
+            }
+            return img.data || typeof img === 'string';
+          });
+
+          const existingPaths = images.filter(img => {
+            // Caminhos relativos (formato novo) - já são strings
+            if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/'))) return true;
+            // Objetos com path (compatibilidade temporária)
+            if (img.path && (img.path.startsWith('img_velonews/') || img.path.startsWith('/img_velonews/'))) return true;
+            // URLs completas antigas (compatibilidade)
+            if (typeof img === 'string' && img.startsWith('http')) return true;
+            if (img.url && img.url.startsWith('http')) return true;
+            return false;
+          }).map(img => {
+            // Caminho relativo (formato novo) - já é string, apenas limpar
+            if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/'))) {
+              return img.startsWith('/') ? img.substring(1) : img; // Retornar apenas a string
+            }
+            // Objeto com path - extrair apenas o path como string
+            if (img.path && (img.path.startsWith('img_velonews/') || img.path.startsWith('/img_velonews/'))) {
+              return img.path.startsWith('/') ? img.path.substring(1) : img.path; // Retornar apenas a string
+            }
+            // URL completa antiga - extrair path como string
+            if (typeof img === 'string' && img.startsWith('http')) {
+              const gcsMatch = img.match(/storage\.googleapis\.com\/[^\/]+\/(.+)$/);
+              if (gcsMatch) {
+                return gcsMatch[1]; // Retornar apenas a string do caminho
+              }
+            }
+            if (img.url && img.url.startsWith('http')) {
+              const gcsMatch = img.url.match(/storage\.googleapis\.com\/[^\/]+\/(.+)$/);
+              if (gcsMatch) {
+                return gcsMatch[1]; // Retornar apenas a string do caminho
+              }
+            }
+            return null;
+          }).filter(img => img !== null && typeof img === 'string');
+
+          // Fazer upload das imagens que precisam
+          if (imagesToUpload.length > 0) {
+            const uploadedImages = await imageUploadService.uploadMultipleImages(imagesToUpload, 'img_velonews');
+            processedImages = [...existingPaths, ...uploadedImages];
+          } else {
+            processedImages = existingPaths;
+          }
+
+          console.log(`✅ ${processedImages.length} imagem(ns) atualizada(s) no GCS`);
+        } catch (uploadError) {
+          console.error('❌ Erro ao fazer upload de imagens para GCS:', uploadError);
+          // Em caso de erro, manter formato antigo (compatibilidade)
+          processedImages = Array.isArray(images) ? images.map(img => {
+            if (typeof img === 'string') return img;
+            return {
+              data: img.data || img,
+              name: img.name || 'imagem.jpg',
+              type: img.type || 'image/jpeg',
+              size: img.size || 0
+            };
+          }) : [];
+        }
+      }
+      updateData.images = processedImages;
     }
     
     // Processar vídeos se fornecidos
@@ -782,13 +909,84 @@ app.delete('/api/velo-news/:id', async (req, res) => {
   }
 });
 
+// ===== API DE IMAGENS (GCS) =====
+
+// GET /api/images/config - Retornar URL base do bucket para o frontend
+app.get('/api/images/config', (req, res) => {
+  try {
+    const bucketName = process.env.GCS_BUCKET_NAME2 || config.GCS_BUCKET_NAME2;
+    if (!bucketName) {
+      return res.status(503).json({
+        success: false,
+        message: 'GCS_BUCKET_NAME2 não configurado',
+        bucketUrl: null
+      });
+    }
+
+    // Retornar URL base do bucket
+    const bucketUrl = `https://storage.googleapis.com/${bucketName}`;
+    
+    res.json({
+      success: true,
+      bucketName,
+      bucketUrl,
+      // URL base para construir URLs completas: bucketUrl + /img_velonews/123.jpg
+      imageBaseUrl: bucketUrl
+    });
+  } catch (error) {
+    console.error('❌ Erro ao obter configuração de imagens:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao obter configuração de imagens',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/images/* - Servir imagens do GCS (redirecionamento)
+app.get('/api/images/*', async (req, res) => {
+  try {
+    const imagePath = req.params[0]; // Caminho completo após /api/images/
+    
+    if (!imagePath || !imagePath.startsWith('img_velonews/')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Caminho de imagem inválido'
+      });
+    }
+
+    const bucketName = process.env.GCS_BUCKET_NAME2 || config.GCS_BUCKET_NAME2;
+    if (!bucketName) {
+      return res.status(503).json({
+        success: false,
+        message: 'GCS_BUCKET_NAME2 não configurado'
+      });
+    }
+
+    // Construir URL pública do GCS
+    const publicUrl = `https://storage.googleapis.com/${bucketName}/${imagePath}`;
+    
+    // Redirecionar para a URL pública do GCS
+    res.redirect(302, publicUrl);
+  } catch (error) {
+    console.error('❌ Erro ao servir imagem:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao servir imagem',
+      error: error.message
+    });
+  }
+});
+
 // ===== API DE FEED SOCIAL (YouTube e Instagram) =====
 
 // Cache para vídeos do YouTube (evitar múltiplas requisições)
 const youtubeCache = {
   data: null,
   timestamp: null,
-  ttl: 30 * 60 * 1000 // 30 minutos
+  ttl: 60 * 60 * 1000, // 1 hora (aumentado para reduzir requisições)
+  lastRequestTime: null,
+  minRequestInterval: 5 * 60 * 1000 // Mínimo de 5 minutos entre requisições reais
 };
 
 // GET /api/feed/youtube - Buscar vídeos do canal YouTube
@@ -796,11 +994,28 @@ app.get('/api/feed/youtube', async (req, res) => {
   try {
     console.log('📹 [YOUTUBE FEED] Requisição recebida');
     
-    // Verificar cache
-    if (youtubeCache.data && youtubeCache.timestamp && (Date.now() - youtubeCache.timestamp) < youtubeCache.ttl) {
-      console.log('📹 [YOUTUBE FEED] Retornando dados do cache');
-      return res.json({ success: true, data: youtubeCache.data, cached: true });
+    // Verificar cache (TTL de 1 hora)
+    const cacheAge = youtubeCache.timestamp ? (Date.now() - youtubeCache.timestamp) : Infinity;
+    if (youtubeCache.data && cacheAge < youtubeCache.ttl) {
+      console.log(`📹 [YOUTUBE FEED] Retornando dados do cache (idade: ${Math.round(cacheAge / 1000 / 60)} minutos)`);
+      return res.json({ success: true, data: youtubeCache.data, cached: true, cacheAge: Math.round(cacheAge / 1000) });
     }
+    
+    // Proteção: evitar requisições muito frequentes mesmo se cache expirou
+    const timeSinceLastRequest = youtubeCache.lastRequestTime ? (Date.now() - youtubeCache.lastRequestTime) : Infinity;
+    if (timeSinceLastRequest < youtubeCache.minRequestInterval && youtubeCache.data) {
+      console.log(`⚠️ [YOUTUBE FEED] Muitas requisições! Retornando cache antigo (última requisição há ${Math.round(timeSinceLastRequest / 1000)} segundos)`);
+      return res.json({ 
+        success: true, 
+        data: youtubeCache.data, 
+        cached: true, 
+        warning: 'Cache antigo retornado para evitar quota excedida',
+        cacheAge: Math.round(cacheAge / 1000)
+      });
+    }
+    
+    // Marcar tempo da requisição
+    youtubeCache.lastRequestTime = Date.now();
     const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || config.YOUTUBE_API_KEY;
     const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || config.YOUTUBE_CHANNEL_ID;
     const YOUTUBE_USERNAME = process.env.YOUTUBE_USERNAME || config.YOUTUBE_USERNAME || '@canalvelotax'; // Username do canal
@@ -1308,10 +1523,11 @@ app.get('/api/feed/youtube/oauth/debug', async (req, res) => {
 // POST /api/feed/youtube/like - Dar like em vídeo do YouTube (OFICIAL)
 app.post('/api/feed/youtube/like', async (req, res) => {
   try {
+    console.log('👍 [YOUTUBE LIKE] Requisição recebida:', req.body);
     const { videoId, userId } = req.body;
-    const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
     if (!videoId) {
+      console.warn('⚠️ [YOUTUBE LIKE] videoId não fornecido');
       return res.status(400).json({
         success: false,
         message: 'videoId é obrigatório'
@@ -1319,47 +1535,75 @@ app.post('/api/feed/youtube/like', async (req, res) => {
     }
 
     if (!userId) {
+      console.warn('⚠️ [YOUTUBE LIKE] userId não fornecido');
       return res.status(400).json({
         success: false,
         message: 'userId é obrigatório. Faça login primeiro.',
         requiresAuth: true
       });
     }
+    
+    console.log(`👍 [YOUTUBE LIKE] Tentando dar like no vídeo ${videoId} para usuário ${userId}`);
 
     // Verificar se usuário está autenticado
     const userToken = userTokens.get(userId);
     
+    console.log(`🔍 [YOUTUBE LIKE] Status do token para usuário ${userId}:`, {
+      hasToken: !!userToken,
+      isExpired: userToken ? (userToken.expiry <= Date.now()) : true,
+      expiry: userToken?.expiry ? new Date(userToken.expiry).toISOString() : 'N/A',
+      now: new Date().toISOString()
+    });
+    
     if (!userToken || userToken.expiry <= Date.now()) {
       // Token expirado ou não existe - precisa reautenticar
+      const baseUrl = config.INOVA_HUB_API_URL || process.env.INOVA_HUB_API_URL || 'http://localhost:8090';
+      const authUrl = `${baseUrl}/api/feed/youtube/oauth?userId=${userId}`;
+      console.warn(`⚠️ [YOUTUBE LIKE] Usuário ${userId} não autenticado. URL de auth: ${authUrl}`);
       return res.status(401).json({
         success: false,
         message: 'Autenticação necessária. Por favor, autorize o acesso ao YouTube.',
         requiresAuth: true,
-        authUrl: `${config.INOVA_HUB_API_URL || 'http://localhost:8090'}/api/feed/youtube/oauth?userId=${userId}`
+        authUrl: authUrl
       });
     }
 
     // Configurar OAuth2 com token do usuário
-    const oauth2Client = getOAuth2Client();
+    let oauth2Client;
+    try {
+      oauth2Client = getOAuth2Client();
+      console.log('🔧 [YOUTUBE LIKE] OAuth2 client criado com sucesso');
+    } catch (error) {
+      console.error('❌ [YOUTUBE LIKE] Erro ao criar OAuth2 client:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao configurar autenticação OAuth',
+        error: error.message
+      });
+    }
+    
     oauth2Client.setCredentials({
       access_token: userToken.accessToken,
       refresh_token: userToken.refreshToken
     });
+    console.log('🔧 [YOUTUBE LIKE] Credenciais OAuth2 configuradas');
 
     // Criar cliente do YouTube
     const youtube = google.youtube({
       version: 'v3',
       auth: oauth2Client
     });
+    console.log('🔧 [YOUTUBE LIKE] Cliente YouTube criado');
 
     // Dar like no vídeo
     try {
+      console.log(`👍 [YOUTUBE LIKE] Chamando API do YouTube para dar like no vídeo ${videoId}`);
       await youtube.videos.rate({
         id: videoId,
         rating: 'like'
       });
 
-      console.log(`👍 Like oficial registrado no YouTube para vídeo: ${videoId} pelo usuário: ${userId}`);
+      console.log(`✅ [YOUTUBE LIKE] Like oficial registrado no YouTube para vídeo: ${videoId} pelo usuário: ${userId}`);
 
       res.json({
         success: true,
@@ -1407,24 +1651,60 @@ app.post('/api/feed/youtube/like', async (req, res) => {
             videoId: videoId
           });
         } catch (refreshError) {
-          console.error('❌ Erro ao renovar token:', refreshError);
+          console.error('❌ [YOUTUBE LIKE] Erro ao renovar token:', refreshError);
+          console.error('❌ [YOUTUBE LIKE] Detalhes do erro:', {
+            code: refreshError.code,
+            message: refreshError.message,
+            response: refreshError.response?.data
+          });
+          const baseUrl = config.INOVA_HUB_API_URL || process.env.INOVA_HUB_API_URL || 'http://localhost:8090';
           return res.status(401).json({
             success: false,
             message: 'Token expirado. Por favor, reautorize o acesso.',
             requiresAuth: true,
-            authUrl: `${config.INOVA_HUB_API_URL || 'http://localhost:8090'}/api/feed/youtube/oauth?userId=${userId}`
+            authUrl: `${baseUrl}/api/feed/youtube/oauth?userId=${userId}`
           });
         }
       } else {
+        // Outro erro da API do YouTube
+        console.error('❌ [YOUTUBE LIKE] Erro da API do YouTube:', {
+          code: youtubeError.code,
+          message: youtubeError.message,
+          response: youtubeError.response?.data,
+          errors: youtubeError.errors
+        });
         throw youtubeError;
       }
+    } catch (rateError) {
+      // Erro específico ao dar like
+      console.error('❌ [YOUTUBE LIKE] Erro ao executar rate:', rateError);
+      console.error('❌ [YOUTUBE LIKE] Detalhes:', {
+        code: rateError.code,
+        message: rateError.message,
+        response: rateError.response?.data
+      });
+      
+      // Se for erro de permissão, pedir reautenticação
+      if (rateError.code === 403 || rateError.code === 401) {
+        const baseUrl = config.INOVA_HUB_API_URL || process.env.INOVA_HUB_API_URL || 'http://localhost:8090';
+        return res.status(401).json({
+          success: false,
+          message: 'Permissão negada. Por favor, reautorize o acesso ao YouTube.',
+          requiresAuth: true,
+          authUrl: `${baseUrl}/api/feed/youtube/oauth?userId=${userId}`
+        });
+      }
+      
+      throw rateError;
     }
   } catch (error) {
-    console.error('❌ Erro ao dar like no YouTube:', error);
+    console.error('❌ [YOUTUBE LIKE] Erro geral ao dar like no YouTube:', error);
+    console.error('❌ [YOUTUBE LIKE] Stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Erro ao dar like no YouTube',
-      error: error.message
+      error: error.message,
+      details: error.response?.data || error.errors
     });
   }
 });
