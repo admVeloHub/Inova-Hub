@@ -605,81 +605,108 @@ app.post('/api/velo-news', async (req, res) => {
     const db = client.db('console_conteudo');
     const collection = db.collection('Velonews');
 
-    // Processar imagens: fazer upload para GCS e salvar apenas URLs
+    // Processar imagens: fazer upload para GCS e salvar apenas caminhos relativos (strings)
     let processedImages = [];
     if (Array.isArray(images) && images.length > 0) {
       try {
-        // Separar imagens que já são URLs das que precisam de upload
-        const imagesToUpload = images.filter(img => {
+        console.log(`📸 Processando ${images.length} imagem(ns)...`);
+        
+        // Separar imagens existentes (já no GCS) das que precisam de upload
+        const existingPaths = [];
+        const imagesToUpload = [];
+        
+        images.forEach((img, index) => {
+          // CASO 1: String com caminho relativo (formato novo: "img_velonews/123.jpg")
           if (typeof img === 'string') {
-            // Se já é URL, não precisa fazer upload
-            return !img.startsWith('http');
-          }
-          // Se é objeto com URL, não precisa fazer upload
-          if (img.url && img.url.startsWith('http')) {
-            return false;
-          }
-          // Se tem data (base64), precisa fazer upload
-          return img.data || typeof img === 'string';
-        });
-
-          const existingPaths = images.filter(img => {
-            // Caminhos relativos (formato novo) - já são strings
-            if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/'))) return true;
-            // Objetos com path (compatibilidade temporária)
-            if (img.path && (img.path.startsWith('img_velonews/') || img.path.startsWith('/img_velonews/'))) return true;
-            // URLs completas antigas (compatibilidade)
-            if (typeof img === 'string' && img.startsWith('http')) return true;
-            if (img.url && img.url.startsWith('http')) return true;
-            return false;
-          }).map(img => {
-            // Caminho relativo (formato novo) - já é string, apenas limpar
-            if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/'))) {
-              return img.startsWith('/') ? img.substring(1) : img; // Retornar apenas a string
+            if (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/')) {
+              // Já é caminho relativo - não precisa upload
+              const cleanPath = img.startsWith('/') ? img.substring(1) : img;
+              existingPaths.push(cleanPath);
+              console.log(`✅ Imagem ${index + 1}: Caminho relativo existente: ${cleanPath}`);
+              return;
             }
-            // Objeto com path - extrair apenas o path como string
-            if (img.path && (img.path.startsWith('img_velonews/') || img.path.startsWith('/img_velonews/'))) {
-              return img.path.startsWith('/') ? img.path.substring(1) : img.path; // Retornar apenas a string
-            }
-            // URL completa antiga - extrair path como string
-            if (typeof img === 'string' && img.startsWith('http')) {
+            // String que não é caminho relativo - pode ser base64 ou URL antiga
+            if (img.startsWith('http')) {
+              // URL completa antiga - extrair path
               const gcsMatch = img.match(/storage\.googleapis\.com\/[^\/]+\/(.+)$/);
               if (gcsMatch) {
-                return gcsMatch[1]; // Retornar apenas a string do caminho
+                existingPaths.push(gcsMatch[1]);
+                console.log(`✅ Imagem ${index + 1}: URL antiga convertida para path: ${gcsMatch[1]}`);
+                return;
               }
             }
-            if (img.url && img.url.startsWith('http')) {
-              const gcsMatch = img.url.match(/storage\.googleapis\.com\/[^\/]+\/(.+)$/);
-              if (gcsMatch) {
-                return gcsMatch[1]; // Retornar apenas a string do caminho
-              }
+            // String base64 (sem prefixo data:) - precisa upload
+            if (img.length > 100) { // Base64 geralmente é longo
+              imagesToUpload.push({
+                data: img,
+                name: `imagem-${index + 1}.jpg`,
+                type: 'image/jpeg'
+              });
+              console.log(`📤 Imagem ${index + 1}: String base64 - será enviada para upload`);
+              return;
             }
-            return null;
-          }).filter(img => img !== null && typeof img === 'string');
+          }
+          
+          // CASO 2: Objeto com path (caminho relativo já existente)
+          if (img && typeof img === 'object' && img.path && (img.path.startsWith('img_velonews/') || img.path.startsWith('/img_velonews/'))) {
+            const cleanPath = img.path.startsWith('/') ? img.path.substring(1) : img.path;
+            existingPaths.push(cleanPath);
+            console.log(`✅ Imagem ${index + 1}: Objeto com path existente: ${cleanPath}`);
+            return;
+          }
+          
+          // CASO 3: Objeto com URL completa antiga
+          if (img && typeof img === 'object' && img.url && img.url.startsWith('http')) {
+            const gcsMatch = img.url.match(/storage\.googleapis\.com\/[^\/]+\/(.+)$/);
+            if (gcsMatch) {
+              existingPaths.push(gcsMatch[1]);
+              console.log(`✅ Imagem ${index + 1}: Objeto com URL antiga convertida: ${gcsMatch[1]}`);
+              return;
+            }
+          }
+          
+          // CASO 4: Objeto com data (base64) - precisa upload
+          if (img && typeof img === 'object' && img.data) {
+            imagesToUpload.push({
+              data: img.data,
+              name: img.name || `imagem-${index + 1}.jpg`,
+              type: img.type || 'image/jpeg',
+              size: img.size || 0
+            });
+            console.log(`📤 Imagem ${index + 1}: Objeto com base64 - será enviada para upload (${img.name || 'sem nome'})`);
+            return;
+          }
+          
+          // CASO 5: Formato desconhecido - ignorar
+          console.warn(`⚠️ Imagem ${index + 1}: Formato desconhecido, ignorando:`, typeof img, img);
+        });
 
-          // Fazer upload das imagens que precisam
-          if (imagesToUpload.length > 0 && imageUploadService) {
+        // Fazer upload das imagens que precisam
+        if (imagesToUpload.length > 0) {
+          if (imageUploadService) {
             try {
+              console.log(`📤 Fazendo upload de ${imagesToUpload.length} imagem(ns) para GCS...`);
               const uploadedImages = await imageUploadService.uploadMultipleImages(imagesToUpload, 'img_velonews');
               processedImages = [...existingPaths, ...uploadedImages];
+              console.log(`✅ Upload concluído: ${uploadedImages.length} nova(s) imagem(ns) + ${existingPaths.length} existente(s)`);
             } catch (uploadError) {
-              console.error('❌ Erro ao fazer upload de imagens (mantendo formato original):', uploadError);
-              // Em caso de erro, manter formato original
-              processedImages = Array.isArray(images) ? images.map(img => {
-                if (typeof img === 'string') return img;
-                return {
-                  data: img.data || img,
-                  name: img.name || 'imagem.jpg',
-                  type: img.type || 'image/jpeg',
-                  size: img.size || 0
-                };
-              }) : [];
+              console.error('❌ Erro ao fazer upload de imagens:', uploadError);
+              console.error('Stack:', uploadError.stack);
+              // Em caso de erro, retornar apenas os caminhos existentes
+              processedImages = existingPaths;
+              throw uploadError; // Re-throw para o catch externo tratar
             }
           } else {
+            console.warn('⚠️ imageUploadService não disponível - usando apenas imagens existentes');
             processedImages = existingPaths;
           }
+        } else {
+          // Nenhuma imagem nova para upload - usar apenas as existentes
+          processedImages = existingPaths;
+          console.log(`✅ Nenhuma imagem nova para upload - ${existingPaths.length} caminho(s) existente(s)`);
+        }
 
-        console.log(`✅ ${processedImages.length} imagem(ns) processada(s) para GCS`);
+        console.log(`✅ Total: ${processedImages.length} imagem(ns) processada(s) (formato: array de strings)`);
       } catch (uploadError) {
         console.error('❌ Erro ao fazer upload de imagens para GCS:', uploadError);
         // Em caso de erro, manter formato antigo (compatibilidade)
