@@ -3604,38 +3604,67 @@ console.log('🔄 Iniciando servidor...');
 console.log(`📍 Porta configurada: ${PORT}`);
 console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
 console.log(`📁 Diretório de trabalho: ${process.cwd()}`);
-console.log(`📁 Arquivos no diretório:`, require('fs').readdirSync('.'));
+
+try {
+  console.log(`📁 Arquivos no diretório:`, require('fs').readdirSync('.'));
+} catch (e) {
+  console.warn('⚠️ Não foi possível listar arquivos:', e.message);
+}
 
 console.log('🚀 Tentando iniciar servidor na porta', PORT);
+console.log('⏰ Timestamp:', new Date().toISOString());
 
-const server = app.listen(PORT, '0.0.0.0', (error) => {
-  if (error) {
-    console.error('❌ Erro ao iniciar servidor:', error);
-    process.exit(1);
-  }
-  
-  console.log(`✅ Servidor backend rodando na porta ${PORT}`);
-  console.log(`🌐 Acessível em: http://localhost:${PORT}`);
-  console.log(`🌐 Acessível na rede local: http://0.0.0.0:${PORT}`);
-  console.log(`📡 Endpoint principal: http://localhost:${PORT}/api/data`);
-  console.log(`📡 Teste a API em: http://localhost:${PORT}/api/test`);
-  
-  // Tentar conectar ao MongoDB em background (não bloqueia o startup)
-  connectToMongo().catch(error => {
-    console.warn('⚠️ MongoDB: Falha na conexão inicial, tentando reconectar...', error.message);
-  });
-  
-  // Inicializar cache de status dos módulos
-  setTimeout(async () => {
-    try {
-      console.log('🚀 Inicializando cache de status dos módulos...');
-      await getModuleStatus();
-      console.log('✅ Cache de status inicializado com sucesso');
-    } catch (error) {
-      console.error('❌ Erro ao inicializar cache de status:', error);
+// Garantir que o servidor sempre tente iniciar
+let server = null;
+try {
+  server = app.listen(PORT, '0.0.0.0', (error) => {
+    if (error) {
+      console.error('❌ Erro ao iniciar servidor:', error);
+      console.error('Stack:', error.stack);
+      // NÃO encerrar o processo - tentar novamente
+      setTimeout(() => {
+        console.log('🔄 Tentando reiniciar servidor...');
+        process.exit(1);
+      }, 1000);
+      return;
     }
-  }, 2000); // Aguardar 2 segundos para MongoDB conectar
-});
+    
+    console.log(`✅ Servidor backend rodando na porta ${PORT}`);
+    console.log(`🌐 Acessível em: http://localhost:${PORT}`);
+    console.log(`🌐 Acessível na rede local: http://0.0.0.0:${PORT}`);
+    console.log(`📡 Endpoint principal: http://localhost:${PORT}/api/data`);
+    console.log(`📡 Teste a API em: http://localhost:${PORT}/api/test`);
+    console.log('⏰ Servidor iniciado em:', new Date().toISOString());
+    
+    // Tentar conectar ao MongoDB em background (não bloqueia o startup)
+    if (typeof connectToMongo === 'function') {
+      connectToMongo().catch(error => {
+        console.warn('⚠️ MongoDB: Falha na conexão inicial, tentando reconectar...', error.message);
+      });
+    }
+    
+    // Inicializar cache de status dos módulos
+    if (typeof getModuleStatus === 'function') {
+      setTimeout(async () => {
+        try {
+          console.log('🚀 Inicializando cache de status dos módulos...');
+          await getModuleStatus();
+          console.log('✅ Cache de status inicializado com sucesso');
+        } catch (error) {
+          console.error('❌ Erro ao inicializar cache de status:', error);
+        }
+      }, 2000); // Aguardar 2 segundos para MongoDB conectar
+    }
+  });
+} catch (error) {
+  console.error('❌ Erro crítico ao tentar iniciar servidor:', error);
+  console.error('Stack:', error.stack);
+  // Tentar iniciar novamente após 2 segundos
+  setTimeout(() => {
+    console.log('🔄 Tentando reiniciar após erro crítico...');
+    process.exit(1);
+  }, 2000);
+}
 
 // Log de erro se o servidor não conseguir iniciar
 server.on('error', (error) => {
