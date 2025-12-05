@@ -1,5 +1,5 @@
 # 📋 DEPLOY LOG - VeloHub V3
-<!-- VERSION: v1.1.1 | DATE: 2025-01-30 | AUTHOR: VeloHub Development Team -->
+<!-- VERSION: v1.1.2 | DATE: 2025-01-30 | AUTHOR: VeloHub Development Team -->
 
 ## 🔐 Configuração de Ambiente GCP
 
@@ -39,6 +39,16 @@
 ---
 
 ## 🚀 **DEPLOYS E PUSHES REALIZADOS**
+
+### **GitHub Push - Correção Erro de Sintaxe catch Duplicado**
+- **Data/Hora**: 2025-01-30 23:50:00
+- **Tipo**: GitHub Push
+- **Commit**: 9eb13d4
+- **Versão**: backend/server.js v2.31.8
+- **Arquivos Modificados**:
+  - `backend/server.js` (v2.31.8 - correção erro sintaxe catch duplicado)
+- **Descrição**: Correção crítica do erro de sintaxe "SyntaxError: Unexpected token 'catch'" que impedia o container do Cloud Run de iniciar na porta 8080. Removido bloco catch (rateError) duplicado dentro do catch (youtubeError) no endpoint /api/feed/youtube/like. Integrado tratamento de erros 401/403 no bloco catch existente. Erro de sintaxe resolvido, servidor agora inicia corretamente.
+- **Status**: ✅ Push realizado com sucesso
 
 ### **GitHub Push - Correção Campo Tabulação nas Respostas do Clarification**
 - **Data/Hora**: 2025-12-02 12:03:16
