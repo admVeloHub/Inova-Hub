@@ -96,7 +96,14 @@ try {
 }
 
 // Carregar config para verificação de configurações WhatsApp
-const config = require('./config');
+let config = null;
+try {
+  config = require('./config');
+  console.log('✅ Config carregado');
+} catch (error) {
+  console.error('❌ Erro ao carregar config:', error.message);
+  // Continuar mesmo sem config
+}
 
 // Log de configurações WhatsApp (apenas em desenvolvimento)
 console.log('🔧 [CONFIG] Configurações carregadas:');
