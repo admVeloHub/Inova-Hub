@@ -64,45 +64,35 @@ try {
 
 console.log('🔄 Iniciando carregamento de serviços...');
 
+// Carregar serviços com tolerância a falhas (não bloquear servidor)
+const loadService = (name, path) => {
+  try {
+    console.log(`📦 Carregando ${name}...`);
+    const service = require(path);
+    console.log(`✅ ${name} carregado`);
+    return service;
+  } catch (error) {
+    console.warn(`⚠️ Erro ao carregar ${name} (continuando sem ele):`, error.message);
+    return null;
+  }
+};
+
 try {
-  console.log('📦 Carregando aiService...');
-  aiService = require('./services/chatbot/aiService');
-  console.log('✅ aiService carregado');
+  aiService = loadService('aiService', './services/chatbot/aiService');
+  searchService = loadService('searchService', './services/chatbot/searchService');
+  sessionService = loadService('sessionService', './services/chatbot/sessionService');
+  dataCache = loadService('dataCache', './services/chatbot/dataCache');
+  userActivityLogger = loadService('userActivityLogger', './services/logging/userActivityLogger');
+  botFeedbackService = loadService('botFeedbackService', './services/chatbot/botFeedbackService');
+  responseFormatter = loadService('responseFormatter', './services/chatbot/responseFormatter');
+  userSessionLogger = loadService('userSessionLogger', './services/logging/userSessionLogger');
   
-  console.log('📦 Carregando searchService...');
-  searchService = require('./services/chatbot/searchService');
-  console.log('✅ searchService carregado');
-  
-  console.log('📦 Carregando sessionService...');
-  sessionService = require('./services/chatbot/sessionService');
-  console.log('✅ sessionService carregado');
-  
-  console.log('📦 Carregando dataCache...');
-  dataCache = require('./services/chatbot/dataCache');
-  console.log('✅ dataCache carregado');
-  
-  console.log('📦 Carregando userActivityLogger...');
-  userActivityLogger = require('./services/logging/userActivityLogger');
-  console.log('✅ userActivityLogger carregado');
-  
-  console.log('📦 Carregando botFeedbackService...');
-  botFeedbackService = require('./services/chatbot/botFeedbackService');
-  console.log('✅ botFeedbackService carregado');
-  
-  console.log('📦 Carregando responseFormatter...');
-  responseFormatter = require('./services/chatbot/responseFormatter');
-  console.log('✅ responseFormatter carregado');
-  
-  console.log('📦 Carregando userSessionLogger...');
-  userSessionLogger = require('./services/logging/userSessionLogger');
-  console.log('✅ userSessionLogger carregado');
-  
-  console.log('🎉 Todos os serviços carregados com sucesso!');
+  console.log('🎉 Carregamento de serviços concluído (alguns podem estar desabilitados)');
 } catch (error) {
-  console.error('❌ Erro ao carregar serviços:', error.message);
+  console.error('❌ Erro crítico ao carregar serviços:', error.message);
   console.error('Stack:', error.stack);
-  console.error('❌ Falha crítica - encerrando processo');
-  process.exit(1);
+  // NÃO encerrar o processo - permitir que o servidor inicie mesmo sem alguns serviços
+  console.warn('⚠️ Continuando sem alguns serviços - servidor ainda pode funcionar');
 }
 
 // Carregar config para verificação de configurações WhatsApp
