@@ -3645,6 +3645,17 @@ try {
     console.log(`📡 Teste a API em: http://localhost:${PORT}/api/test`);
     console.log('⏰ Servidor iniciado em:', new Date().toISOString());
     
+    // Registrar rotas de Escalações DEPOIS do servidor iniciar (não bloqueia startup)
+    setTimeout(() => {
+      try {
+        if (typeof registerEscalacoesRoutes === 'function') {
+          registerEscalacoesRoutes();
+        }
+      } catch (error) {
+        console.error('❌ Erro ao registrar rotas de Escalações após startup:', error.message);
+      }
+    }, 100);
+    
     // Tentar conectar ao MongoDB em background (não bloqueia o startup)
     if (typeof connectToMongo === 'function') {
       connectToMongo().catch(error => {
@@ -4600,51 +4611,54 @@ console.log('✅ Rotas do módulo Apoio registradas com sucesso!');
 console.log('📋 Rotas disponíveis: POST /api/support/tk-conteudos, POST /api/support/tk-gestao');
 
 // ===== API PARA MÓDULO ESCALAÇÕES =====
-console.log('🔧 Registrando rotas do módulo Escalações...');
+// MOVER REGISTRO DE ROTAS PARA DEPOIS DO SERVIDOR INICIAR
+// Isso evita que código síncrono bloqueie o startup
+const registerEscalacoesRoutes = () => {
+  try {
+    console.log('🔧 Registrando rotas do módulo Escalações...');
+    console.log('📦 Carregando módulos de Escalações...');
+    const initSolicitacoesRoutes = require('./routes/api/escalacoes/solicitacoes');
+    const initErrosBugsRoutes = require('./routes/api/escalacoes/erros-bugs');
+    const initLogsRoutes = require('./routes/api/escalacoes/logs');
+    const createEscalacoesIndexes = require('./routes/api/escalacoes/indexes');
+    console.log('✅ Módulos carregados com sucesso');
 
-try {
-  console.log('📦 Carregando módulos de Escalações...');
-  const initSolicitacoesRoutes = require('./routes/api/escalacoes/solicitacoes');
-  const initErrosBugsRoutes = require('./routes/api/escalacoes/erros-bugs');
-  const initLogsRoutes = require('./routes/api/escalacoes/logs');
-  const createEscalacoesIndexes = require('./routes/api/escalacoes/indexes');
-  console.log('✅ Módulos carregados com sucesso');
+    console.log('🔧 Inicializando routers...');
+    // Registrar rotas
+    const solicitacoesRouter = initSolicitacoesRoutes(client, connectToMongo, { userActivityLogger });
+    const errosBugsRouter = initErrosBugsRoutes(client, connectToMongo, { userActivityLogger });
+    const logsRouter = initLogsRoutes(client, connectToMongo);
+    console.log('✅ Routers inicializados');
 
-  console.log('🔧 Inicializando routers...');
-  // Registrar rotas
-  const solicitacoesRouter = initSolicitacoesRoutes(client, connectToMongo, { userActivityLogger });
-  const errosBugsRouter = initErrosBugsRoutes(client, connectToMongo, { userActivityLogger });
-  const logsRouter = initLogsRoutes(client, connectToMongo);
-  console.log('✅ Routers inicializados');
+    console.log('🔗 Registrando rotas no Express...');
+    app.use('/api/escalacoes/solicitacoes', solicitacoesRouter);
+    app.use('/api/escalacoes/erros-bugs', errosBugsRouter);
+    app.use('/api/escalacoes/logs', logsRouter);
+    console.log('✅ Rotas registradas no Express');
 
-  console.log('🔗 Registrando rotas no Express...');
-  app.use('/api/escalacoes/solicitacoes', solicitacoesRouter);
-  app.use('/api/escalacoes/erros-bugs', errosBugsRouter);
-  app.use('/api/escalacoes/logs', logsRouter);
-  console.log('✅ Rotas registradas no Express');
+    // Criar índices MongoDB (em background, não bloqueia startup)
+    setTimeout(async () => {
+      try {
+        console.log('📊 Criando índices MongoDB para Escalações...');
+        await createEscalacoesIndexes(client, connectToMongo);
+        console.log('✅ Índices criados com sucesso');
+      } catch (error) {
+        console.error('❌ Erro ao criar índices de Escalações:', error);
+        console.error('Stack:', error.stack);
+      }
+    }, 3000);
 
-  // Criar índices MongoDB (em background, não bloqueia startup)
-  setTimeout(async () => {
-    try {
-      console.log('📊 Criando índices MongoDB para Escalações...');
-      await createEscalacoesIndexes(client, connectToMongo);
-      console.log('✅ Índices criados com sucesso');
-    } catch (error) {
-      console.error('❌ Erro ao criar índices de Escalações:', error);
-      console.error('Stack:', error.stack);
-    }
-  }, 3000);
-
-  console.log('✅ Rotas do módulo Escalações registradas com sucesso!');
-  console.log('📋 Rotas disponíveis:');
-  console.log('   - GET/POST/PUT/DELETE /api/escalacoes/solicitacoes');
-  console.log('   - GET/POST /api/escalacoes/erros-bugs');
-  console.log('   - GET/POST /api/escalacoes/logs');
-} catch (error) {
-  console.error('❌ Erro ao registrar rotas de Escalações:', error.message);
-  console.error('Stack:', error.stack);
-  console.error('Detalhes do erro:', error);
-}
+    console.log('✅ Rotas do módulo Escalações registradas com sucesso!');
+    console.log('📋 Rotas disponíveis:');
+    console.log('   - GET/POST/PUT/DELETE /api/escalacoes/solicitacoes');
+    console.log('   - GET/POST /api/escalacoes/erros-bugs');
+    console.log('   - GET/POST /api/escalacoes/logs');
+  } catch (error) {
+    console.error('❌ Erro ao registrar rotas de Escalações:', error.message);
+    console.error('Stack:', error.stack);
+    console.error('Detalhes do erro:', error);
+  }
+};
 
 // Servir arquivos estáticos do frontend (DEPOIS das rotas da API)
 app.use(express.static(path.join(__dirname, 'public')));
