@@ -46,8 +46,21 @@ const localConfig = require('./config-local');
 // VERSION: v2.19.0 | DATE: 2025-01-10 | AUTHOR: VeloHub Development Team
 let aiService, searchService, sessionService, dataCache, userActivityLogger, botFeedbackService, responseFormatter, userSessionLogger;
 
-// Importar serviço de upload de imagens
-const imageUploadService = require('./services/imageUploadService');
+// Importar serviço de upload de imagens (com tratamento de erro)
+let imageUploadService = null;
+try {
+  imageUploadService = require('./services/imageUploadService');
+  console.log('✅ Serviço de upload de imagens carregado');
+} catch (error) {
+  console.warn('⚠️ Erro ao carregar serviço de upload de imagens (continuando sem upload):', error.message);
+  // Criar um mock para evitar erros
+  imageUploadService = {
+    uploadMultipleImages: async () => {
+      console.warn('⚠️ Upload de imagens desabilitado - GCS não configurado');
+      return [];
+    }
+  };
+}
 
 console.log('🔄 Iniciando carregamento de serviços...');
 
@@ -129,9 +142,7 @@ app.use(cors({
   ],
   credentials: true
 }));
-// Aumentar limite do body parser para suportar imagens em base64
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json());
 
 // ===== FUNÇÕES AUXILIARES =====
 
