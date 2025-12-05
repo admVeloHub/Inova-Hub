@@ -3,6 +3,13 @@
  * VERSION: v2.31.7 | DATE: 2025-01-30 | AUTHOR: VeloHub Development Team
  */
 
+// LOG IMEDIATO - GARANTIR QUE O CÓDIGO ESTÁ SENDO EXECUTADO
+console.log('🚀 SERVIDOR INICIANDO - LOG IMEDIATO');
+console.log('⏰ Timestamp inicial:', new Date().toISOString());
+console.log('📦 Node version:', process.version);
+console.log('🌍 NODE_ENV:', process.env.NODE_ENV || 'development');
+console.log('🔢 PORT:', process.env.PORT || 'não definido');
+
 // ===== FALLBACK PARA TESTES LOCAIS =====
 const FALLBACK_FOR_LOCAL_TESTING = {
   _id: "devId123",
@@ -3600,10 +3607,11 @@ app.get('/api/velo-news/acknowledgments/:userEmail', async (req, res) => {
 });
 
 // Iniciar servidor
-console.log('🔄 Iniciando servidor...');
+console.log('🔄 ===== INICIANDO SERVIDOR =====');
 console.log(`📍 Porta configurada: ${PORT}`);
 console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
 console.log(`📁 Diretório de trabalho: ${process.cwd()}`);
+console.log('⏰ Timestamp antes de iniciar:', new Date().toISOString());
 
 try {
   console.log(`📁 Arquivos no diretório:`, require('fs').readdirSync('.'));
@@ -3613,6 +3621,7 @@ try {
 
 console.log('🚀 Tentando iniciar servidor na porta', PORT);
 console.log('⏰ Timestamp:', new Date().toISOString());
+console.log('✅ Chegou até aqui - próximo passo: app.listen()');
 
 // Garantir que o servidor sempre tente iniciar
 let server = null;
