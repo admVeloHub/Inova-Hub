@@ -930,11 +930,14 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
 
     // Função para obter URL da imagem (primeira imagem da notícia)
     const getImageUrl = (news) => {
-      if (!news.images || !Array.isArray(news.images) || news.images.length === 0) {
+      // Conforme esquema: imagens estão em media.images (formato novo) ou images (compatibilidade)
+      const imagesArray = news.media?.images || news.images || [];
+      
+      if (!Array.isArray(imagesArray) || imagesArray.length === 0) {
         return null;
       }
       
-      const firstImage = news.images[0];
+      const firstImage = imagesArray[0];
       
       // Se é caminho relativo (formato novo: "img_velonews/123.jpg")
       if (typeof firstImage === 'string' && (firstImage.startsWith('img_velonews/') || firstImage.startsWith('/img_velonews/'))) {
@@ -1811,9 +1814,12 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                         
                         <div className="flex-1 overflow-y-auto p-4">
                             {/* Renderizar todas as imagens */}
-                            {selectedNews.images && Array.isArray(selectedNews.images) && selectedNews.images.length > 0 && (
-                                <div className="mb-4 space-y-3">
-                                    {selectedNews.images.map((img, idx) => {
+                            {(() => {
+                                // Conforme esquema: imagens estão em media.images (formato novo) ou images (compatibilidade)
+                                const imagesArray = selectedNews.media?.images || selectedNews.images || [];
+                                return imagesArray && Array.isArray(imagesArray) && imagesArray.length > 0 && (
+                                    <div className="mb-4 space-y-3">
+                                        {imagesArray.map((img, idx) => {
                                         // Função auxiliar para obter URL da imagem
                                         const getImageUrlForModal = (image) => {
                                             // Se é caminho relativo (formato novo: "img_velonews/123.jpg")
@@ -1878,12 +1884,16 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                                         );
                                     })}
                                 </div>
-                            )}
+                                );
+                            })()}
                             
                             {/* Renderizar vídeos do YouTube */}
-                            {selectedNews.videos && Array.isArray(selectedNews.videos) && selectedNews.videos.length > 0 && (
+                            {(() => {
+                                // Conforme esquema: vídeos estão em media.videos (formato novo) ou videos (compatibilidade)
+                                const videosArray = selectedNews.media?.videos || selectedNews.videos || [];
+                                return videosArray && Array.isArray(videosArray) && videosArray.length > 0 && (
                                 <div className="mb-4 space-y-3">
-                                    {selectedNews.videos.map((vid, idx) => {
+                                    {videosArray.map((vid, idx) => {
                                         if (vid.type === 'youtube' || vid.embed) {
                                             const embedUrl = vid.embed || vid.url;
                                             return (
@@ -1901,7 +1911,8 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                                         return null;
                                     })}
                                 </div>
-                            )}
+                                );
+                            })()}
                             
                             <div 
                                 className="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"

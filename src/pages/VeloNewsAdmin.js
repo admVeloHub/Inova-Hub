@@ -299,8 +299,11 @@ const VeloNewsAdmin = () => {
 
   // Editar notícia
   const editarNoticia = (noticia) => {
+    // Conforme esquema: imagens estão em media.images (formato novo) ou images (compatibilidade)
+    const imagesArray = noticia.media?.images || noticia.images || [];
+    
     // Processar imagens: agora são strings (caminhos relativos) ou base64 (compatibilidade)
-    const imagesPreview = (noticia.images || []).map(img => {
+    const imagesPreview = imagesArray.map(img => {
       // Se é caminho relativo (formato novo) - string simples
       if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('/img_velonews/'))) {
         const cleanPath = img.startsWith('/') ? img.substring(1) : img;
@@ -656,9 +659,12 @@ const VeloNewsAdmin = () => {
                     </p>
 
                     {/* Imagens */}
-                    {noticia.images && Array.isArray(noticia.images) && noticia.images.length > 0 && (
-                      <div className="grid grid-cols-2 gap-2 mb-2">
-                        {noticia.images.map((img, idx) => {
+                    {(() => {
+                      // Conforme esquema: imagens estão em media.images (formato novo) ou images (compatibilidade)
+                      const imagesArray = noticia.media?.images || noticia.images || [];
+                      return imagesArray && Array.isArray(imagesArray) && imagesArray.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                          {imagesArray.map((img, idx) => {
                           const imgSrc = getImageUrl(img);
                           return (
                             <div key={idx} className="relative">
@@ -681,7 +687,8 @@ const VeloNewsAdmin = () => {
                           );
                         })}
                       </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Vídeos do YouTube */}
                     {noticia.videos && Array.isArray(noticia.videos) && noticia.videos.some(v => v.type === 'youtube' || v.embed) && (

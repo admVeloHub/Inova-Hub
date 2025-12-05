@@ -750,11 +750,20 @@ app.post('/api/velo-news', async (req, res) => {
       conteudo: String(conteudo).trim(),
       isCritical: isCritical === true || isCritical === 'Y',
       solved: solved === true || solved === 'true',
-      images: processedImages,
-      videos: processedVideos,
+      media: {
+        images: processedImages,  // Array de strings com caminhos relativos (ex: "img_velonews/123.jpg")
+        videos: processedVideos    // Array de vídeos
+      },
       createdAt: now,
       updatedAt: now
     };
+    
+    console.log('📝 Notícia a ser salva:', JSON.stringify({
+      titulo: noticia.titulo,
+      media: noticia.media,
+      imagesCount: noticia.media.images.length,
+      videosCount: noticia.media.videos.length
+    }, null, 2));
 
     const result = await collection.insertOne(noticia);
 
@@ -919,12 +928,25 @@ app.put('/api/velo-news/:id', async (req, res) => {
           }) : [];
         }
       }
-      updateData.images = processedImages;
+      // Salvar dentro de media.images conforme esquema
+      if (!updateData.media) {
+        updateData.media = {};
+      }
+      updateData.media.images = processedImages;
+      
+      console.log('📝 [PUT] Atualização de imagens:', JSON.stringify({
+        imagesCount: processedImages.length,
+        images: processedImages.slice(0, 3) // Mostrar apenas as 3 primeiras para log
+      }, null, 2));
     }
     
     // Processar vídeos se fornecidos
     if (videos !== undefined) {
-      updateData.videos = Array.isArray(videos) ? videos.map(vid => {
+      // Salvar dentro de media.videos conforme esquema
+      if (!updateData.media) {
+        updateData.media = {};
+      }
+      updateData.media.videos = Array.isArray(videos) ? videos.map(vid => {
         if (typeof vid === 'string') return vid;
         if (vid.type === 'youtube' || vid.embed) {
           return {
