@@ -10,6 +10,18 @@ console.log('📦 Node version:', process.version);
 console.log('🌍 NODE_ENV:', process.env.NODE_ENV || 'development');
 console.log('🔢 PORT:', process.env.PORT || 'não definido');
 
+// HANDLERS DE ERRO GLOBAL - CAPTURAR QUALQUER ERRO ANTES DO SERVIDOR INICIAR
+process.on('uncaughtException', (error) => {
+  console.error('❌ UNCAUGHT EXCEPTION (antes do servidor iniciar):', error);
+  console.error('Stack:', error.stack);
+  // NÃO encerrar o processo - tentar iniciar o servidor mesmo assim
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ UNHANDLED REJECTION (antes do servidor iniciar):', reason);
+  // NÃO encerrar o processo - tentar iniciar o servidor mesmo assim
+});
+
 // ===== FALLBACK PARA TESTES LOCAIS =====
 const FALLBACK_FOR_LOCAL_TESTING = {
   _id: "devId123",
@@ -3622,79 +3634,119 @@ try {
 console.log('🚀 Tentando iniciar servidor na porta', PORT);
 console.log('⏰ Timestamp:', new Date().toISOString());
 console.log('✅ Chegou até aqui - próximo passo: app.listen()');
+console.log('🔍 Verificando se app está definido:', typeof app !== 'undefined' ? 'SIM' : 'NÃO');
+console.log('🔍 Verificando se PORT está definido:', PORT);
 
-// Garantir que o servidor sempre tente iniciar
-let server = null;
-try {
-  server = app.listen(PORT, '0.0.0.0', (error) => {
-    if (error) {
-      console.error('❌ Erro ao iniciar servidor:', error);
-      console.error('Stack:', error.stack);
-      // NÃO encerrar o processo - tentar novamente
-      setTimeout(() => {
-        console.log('🔄 Tentando reiniciar servidor...');
-        process.exit(1);
-      }, 1000);
-      return;
-    }
-    
-    console.log(`✅ Servidor backend rodando na porta ${PORT}`);
-    console.log(`🌐 Acessível em: http://localhost:${PORT}`);
-    console.log(`🌐 Acessível na rede local: http://0.0.0.0:${PORT}`);
-    console.log(`📡 Endpoint principal: http://localhost:${PORT}/api/data`);
-    console.log(`📡 Teste a API em: http://localhost:${PORT}/api/test`);
-    console.log('⏰ Servidor iniciado em:', new Date().toISOString());
-    
-    // Registrar rotas de Escalações DEPOIS do servidor iniciar (não bloqueia startup)
-    setTimeout(() => {
-      try {
-        if (typeof registerEscalacoesRoutes === 'function') {
-          registerEscalacoesRoutes();
-        }
-      } catch (error) {
-        console.error('❌ Erro ao registrar rotas de Escalações após startup:', error.message);
+// Função para iniciar o servidor (reutilizável)
+const startServer = () => {
+  console.log('🔄 Executando startServer()...');
+  let server = null;
+  try {
+    console.log('📡 Chamando app.listen()...');
+    server = app.listen(PORT, '0.0.0.0', (error) => {
+      if (error) {
+        console.error('❌ Erro no callback de app.listen():', error);
+        console.error('Stack:', error.stack);
+        return;
       }
-    }, 100);
-    
-    // Tentar conectar ao MongoDB em background (não bloqueia o startup)
-    if (typeof connectToMongo === 'function') {
-      connectToMongo().catch(error => {
-        console.warn('⚠️ MongoDB: Falha na conexão inicial, tentando reconectar...', error.message);
-      });
-    }
-    
-    // Inicializar cache de status dos módulos
-    if (typeof getModuleStatus === 'function') {
-      setTimeout(async () => {
+      
+      console.log(`✅ Servidor backend rodando na porta ${PORT}`);
+      console.log(`🌐 Acessível em: http://localhost:${PORT}`);
+      console.log(`🌐 Acessível na rede local: http://0.0.0.0:${PORT}`);
+      console.log(`📡 Endpoint principal: http://localhost:${PORT}/api/data`);
+      console.log(`📡 Teste a API em: http://localhost:${PORT}/api/test`);
+      console.log('⏰ Servidor iniciado em:', new Date().toISOString());
+      console.log('✅ SERVIDOR PRONTO - ESCUTANDO NA PORTA', PORT);
+      
+      // Registrar rotas de Escalações DEPOIS do servidor iniciar (não bloqueia startup)
+      setTimeout(() => {
         try {
-          console.log('🚀 Inicializando cache de status dos módulos...');
-          await getModuleStatus();
-          console.log('✅ Cache de status inicializado com sucesso');
+          if (typeof registerEscalacoesRoutes === 'function') {
+            registerEscalacoesRoutes();
+          }
         } catch (error) {
-          console.error('❌ Erro ao inicializar cache de status:', error);
+          console.error('❌ Erro ao registrar rotas de Escalações após startup:', error.message);
         }
-      }, 2000); // Aguardar 2 segundos para MongoDB conectar
-    }
-  });
-} catch (error) {
-  console.error('❌ Erro crítico ao tentar iniciar servidor:', error);
-  console.error('Stack:', error.stack);
-  // Tentar iniciar novamente após 2 segundos
+      }, 100);
+      
+      // Tentar conectar ao MongoDB em background (não bloqueia o startup)
+      if (typeof connectToMongo === 'function') {
+        connectToMongo().catch(error => {
+          console.warn('⚠️ MongoDB: Falha na conexão inicial, tentando reconectar...', error.message);
+        });
+      }
+      
+      // Inicializar cache de status dos módulos
+      if (typeof getModuleStatus === 'function') {
+        setTimeout(async () => {
+          try {
+            console.log('🚀 Inicializando cache de status dos módulos...');
+            await getModuleStatus();
+            console.log('✅ Cache de status inicializado com sucesso');
+          } catch (error) {
+            console.error('❌ Erro ao inicializar cache de status:', error);
+          }
+        }, 2000); // Aguardar 2 segundos para MongoDB conectar
+      }
+    });
+    
+    console.log('✅ app.listen() chamado com sucesso');
+    return server;
+  } catch (error) {
+    console.error('❌ Erro crítico ao tentar iniciar servidor:', error);
+    console.error('Stack:', error.stack);
+    return null;
+  }
+};
+
+// Tentar iniciar o servidor
+let server = startServer();
+
+// Se falhar, tentar novamente após 1 segundo
+if (!server) {
+  console.warn('⚠️ Primeira tentativa falhou, tentando novamente em 1 segundo...');
   setTimeout(() => {
-    console.log('🔄 Tentando reiniciar após erro crítico...');
-    process.exit(1);
-  }, 2000);
+    server = startServer();
+    if (!server) {
+      console.error('❌ Segunda tentativa também falhou');
+    }
+  }, 1000);
 }
 
 // Log de erro se o servidor não conseguir iniciar
-server.on('error', (error) => {
-  console.error('❌ Erro no servidor:', error);
-  process.exit(1);
-});
+if (server) {
+  server.on('error', (error) => {
+    console.error('❌ Erro no servidor (evento error):', error);
+    console.error('Stack:', error.stack);
+    // Não encerrar imediatamente - dar tempo para Cloud Run verificar
+    setTimeout(() => {
+      console.error('❌ Encerrando processo após erro no servidor');
+      process.exit(1);
+    }, 5000);
+  });
 
-server.on('listening', () => {
-  console.log('🎉 Servidor está escutando na porta', PORT);
-});
+  server.on('listening', () => {
+    console.log('🎉 Servidor está escutando na porta', PORT);
+    console.log('✅ SERVIDOR PRONTO PARA RECEBER REQUISIÇÕES');
+  });
+} else {
+  console.error('❌ Servidor não foi criado - server é null');
+  // Tentar criar novamente após 1 segundo
+  setTimeout(() => {
+    console.log('🔄 Tentando criar servidor novamente...');
+    try {
+      const retryServer = app.listen(PORT, '0.0.0.0', () => {
+        console.log(`✅ Servidor criado na segunda tentativa na porta ${PORT}`);
+      });
+      retryServer.on('error', (error) => {
+        console.error('❌ Erro na segunda tentativa:', error);
+      });
+    } catch (error) {
+      console.error('❌ Erro crítico na segunda tentativa:', error);
+      process.exit(1);
+    }
+  }, 1000);
+}
 
 // Tratamento de erros não capturados
 process.on('uncaughtException', (error) => {
