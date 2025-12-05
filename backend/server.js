@@ -555,9 +555,14 @@ app.get('/api/velo-news', async (req, res) => {
         isCritical: item.isCritical === true || item.is_critical === 'Y',
         is_critical: item.isCritical === true ? 'Y' : (item.is_critical || 'N'),
         solved: item.solved || false,
-        // Arrays de imagens e vídeos (Base64 armazenado no MongoDB)
-        images: Array.isArray(item.images) ? item.images : [],
-        videos: Array.isArray(item.videos) ? item.videos : [],
+        // Arrays de imagens e vídeos - conforme esquema: media.images e media.videos (formato novo) ou images/videos (compatibilidade)
+        images: Array.isArray(item.media?.images) ? item.media.images : (Array.isArray(item.images) ? item.images : []),
+        videos: Array.isArray(item.media?.videos) ? item.media.videos : (Array.isArray(item.videos) ? item.videos : []),
+        // Manter também media para compatibilidade futura
+        media: item.media || {
+          images: Array.isArray(item.images) ? item.images : [],
+          videos: Array.isArray(item.videos) ? item.videos : []
+        },
         createdAt,
         updatedAt: item.updatedAt ?? createdAt,
         source: 'Velonews'
