@@ -129,7 +129,9 @@ app.use(cors({
   ],
   credentials: true
 }));
-app.use(express.json());
+// Aumentar limite do body parser para suportar imagens em base64
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // ===== FUNÇÕES AUXILIARES =====
 
