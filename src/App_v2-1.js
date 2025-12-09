@@ -3747,8 +3747,8 @@ const ArtigosPage = () => {
                             {/* Renderizar conteúdo do artigo */}
                             {selectedArticle._id && selectedArticle._id.startsWith('artigo-') ? (
                                 // Para artigos HTML, renderizar diretamente preservando a estrutura
+                                // O conteúdo já vem com a div .artigo-html-content dentro
                                 <div 
-                                    className="artigo-html-content"
                                     dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
                                 />
                             ) : (
