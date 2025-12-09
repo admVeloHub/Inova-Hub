@@ -1142,6 +1142,35 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   processedHtml = processedHtml.replace(/<img[^>]*src=["'][^"']*(storage\.googleapis\.com|\.run\.app\/api\/images)[^"']*["'][^>]*>/gi, '');
   processedHtml = processedHtml.replace(/&lt;img[^&]*src=["'][^"']*(storage\.googleapis\.com|\.run\.app\/api\/images)[^"']*["'][^&]*&gt;/gi, '');
   
+  // 7. Processar links <a> que contenham imagens do bucket/Cloud Run
+  // Remover completamente links que apontam para imagens (as imagens serão renderizadas separadamente)
+  processedHtml = processedHtml.replace(/<a[^>]*href=["'](https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^"']+|img_artigos\/[^"']+)|https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^"']+|img_artigos\/[^"']+))["'][^>]*>([^<]*)<\/a>/gi, (match, imageUrl, linkText) => {
+    // Remover completamente o link - a imagem será renderizada separadamente via getAllImages
+    return '';
+  });
+  
+  // 8. Processar casos onde há HTML malformado ou quebrado
+  // Exemplo: "! target="_blank" rel="noopener noreferrer">Comprovante_20251121T084226679755.png"
+  // Isso pode ser um link ou imagem quebrada
+  processedHtml = processedHtml.replace(/!?\s*target=["']_blank["']\s*rel=["']noopener noreferrer["']\s*&gt;([^<]+\.(jpg|jpeg|png|gif|webp|svg))/gi, '');
+  processedHtml = processedHtml.replace(/!?\s*target=["']_blank["']\s*rel=["']noopener noreferrer["']\s*>([^<]+\.(jpg|jpeg|png|gif|webp|svg))/gi, '');
+  
+  // 9. Remover atributos HTML soltos que possam ter sobrado de tags quebradas
+  // Exemplo: "target="_blank" rel="noopener noreferrer">" sozinho no texto
+  processedHtml = processedHtml.replace(/\s*target=["']_blank["']\s*rel=["']noopener noreferrer["']\s*&gt;/gi, '');
+  processedHtml = processedHtml.replace(/\s*target=["']_blank["']\s*rel=["']noopener noreferrer["']\s*>/gi, '');
+  
+  // 10. Remover nomes de arquivos de imagem que aparecem como texto solto após HTML quebrado
+  // Isso captura casos específicos como "! target='_blank'>Comprovante_20251121T084226679755.png"
+  // Apenas remove se houver evidência de HTML quebrado antes (como "!" ou atributos HTML soltos)
+  processedHtml = processedHtml.replace(/([!>]\s*)([A-Za-z0-9_\-]+\.(jpg|jpeg|png|gif|webp|svg))(?=\s|$|</)/gi, (match, prefix, filename) => {
+    // Remover apenas se houver "!" ou ">" antes (indicando HTML quebrado)
+    if (prefix.includes('!') || prefix.includes('>')) {
+      return '';
+    }
+    return match;
+  });
+  
   console.log('🔍 processContentHtml - DEPOIS:', processedHtml.substring(0, 200));
   
   return processedHtml;
