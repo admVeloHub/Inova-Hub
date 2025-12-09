@@ -1064,6 +1064,9 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   // Padrão para URLs do bucket GCS
   const bucketUrlPattern = /https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/g;
   
+  // Padrão para URLs do Cloud Run que apontam para /api/images/
+  const cloudRunImagePattern = /https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/g;
+  
   // 1. Substituir URLs do bucket em markdown por endpoint local
   processedHtml = processedHtml.replace(/!\[([^\]]*)\]\((https:\/\/storage\.googleapis\.com\/[^\)]+)\)/g, (match, altText, bucketUrl) => {
     const pathMatch = bucketUrl.match(/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/);
@@ -1100,6 +1103,24 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
     return match;
   });
   
+  // 2b. Processar tags <img> que contenham URLs do Cloud Run (normalizar para API_BASE_URL)
+  processedHtml = processedHtml.replace(/<img([^>]*src=["'])(https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^"']+|img_artigos\/[^"']+))([^>]*)>/gi, (match, beforeSrc, cloudRunUrl, afterAttrs) => {
+    const pathMatch = cloudRunUrl.match(/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/);
+    if (pathMatch) {
+      const cleanPath = pathMatch[1];
+      const encodedPath = cleanPath.split('/').map(part => encodeURIComponent(part)).join('/');
+      const newSrc = `${API_BASE_URL}/images/${encodedPath}`;
+      
+      // Remover atributo alt se contiver nome do arquivo
+      let processedAttrs = afterAttrs;
+      processedAttrs = processedAttrs.replace(/\s+alt=["']([^"']*\.(jpg|jpeg|png|gif|webp))["']/gi, '');
+      processedAttrs = processedAttrs.replace(/\s+title=["']([^"']*\.(jpg|jpeg|png|gif|webp))["']/gi, '');
+      
+      return `<img${beforeSrc}${newSrc}${processedAttrs}>`;
+    }
+    return match;
+  });
+  
   // 3. Substituir URLs do bucket em texto simples (caso apareçam como links)
   processedHtml = processedHtml.replace(bucketUrlPattern, (match, imagePath) => {
     const cleanPath = imagePath;
@@ -1107,8 +1128,35 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
     return `${API_BASE_URL}/images/${encodedPath}`;
   });
   
+  // 3b. Substituir URLs do Cloud Run em texto simples
+  processedHtml = processedHtml.replace(cloudRunImagePattern, (match, imagePath) => {
+    const cleanPath = imagePath;
+    const encodedPath = cleanPath.split('/').map(part => encodeURIComponent(part)).join('/');
+    return `${API_BASE_URL}/images/${encodedPath}`;
+  });
+  
   // 4. Remover texto que contenha apenas URLs do bucket (linhas soltas)
   processedHtml = processedHtml.replace(/https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^\s\)]+|img_artigos\/[^\s\)]+)/g, '');
+  
+  // 4b. Remover texto que contenha apenas URLs do Cloud Run (linhas soltas)
+  processedHtml = processedHtml.replace(/https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^\s\)]+|img_artigos\/[^\s\)]+)/g, '');
+  
+  // 5. Processar HTML escapado (quando o HTML aparece como texto)
+  // Se encontrar tags HTML escapadas como &lt;img, converter de volta
+  processedHtml = processedHtml.replace(/&lt;img([^&]*?)src=["']([^"']+)["']([^&]*?)&gt;/gi, (match, beforeSrc, srcUrl, afterAttrs) => {
+    // Se a URL for do bucket ou Cloud Run, processar
+    if (srcUrl.includes('storage.googleapis.com') || srcUrl.includes('.run.app/api/images/')) {
+      const pathMatch = srcUrl.match(/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/);
+      if (pathMatch) {
+        const cleanPath = pathMatch[1];
+        const encodedPath = cleanPath.split('/').map(part => encodeURIComponent(part)).join('/');
+        const newSrc = `${API_BASE_URL}/images/${encodedPath}`;
+        return `<img${beforeSrc}src="${newSrc}"${afterAttrs}>`;
+      }
+    }
+    // Se não for do bucket, apenas desescapar
+    return `<img${beforeSrc}src="${srcUrl}"${afterAttrs}>`;
+  });
   
   console.log('🔍 processContentHtml - DEPOIS:', processedHtml.substring(0, 200));
   
@@ -3746,10 +3794,10 @@ const ArtigosPage = () => {
                             
                             {/* Renderizar conteúdo do artigo */}
                             {selectedArticle._id && selectedArticle._id.startsWith('artigo-') ? (
-                                // Para artigos HTML, renderizar diretamente preservando a estrutura
+                                // Para artigos HTML, processar URLs do bucket mas preservar estrutura HTML
                                 // O conteúdo já vem com a div .artigo-html-content dentro
                                 <div 
-                                    dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
+                                    dangerouslySetInnerHTML={{ __html: processContentHtml(selectedArticle.content, selectedArticle?.media?.images || []) }}
                                 />
                             ) : (
                                 // Para artigos da API, usar processamento normal
