@@ -1163,7 +1163,7 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   // 10. Remover nomes de arquivos de imagem que aparecem como texto solto após HTML quebrado
   // Isso captura casos específicos como "! target='_blank'>Comprovante_20251121T084226679755.png"
   // Apenas remove se houver evidência de HTML quebrado antes (como "!" ou atributos HTML soltos)
-  processedHtml = processedHtml.replace(/([!>]\s*)([A-Za-z0-9_\-]+\.(jpg|jpeg|png|gif|webp|svg))(?=\s|$|</)/gi, (match, prefix, filename) => {
+  processedHtml = processedHtml.replace(/([!>]\s*)([A-Za-z0-9_\-]+\.(jpg|jpeg|png|gif|webp|svg))(?=\s|$)/gi, (match, prefix) => {
     // Remover apenas se houver "!" ou ">" antes (indicando HTML quebrado)
     if (prefix.includes('!') || prefix.includes('>')) {
       return '';
