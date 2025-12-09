@@ -40,6 +40,7 @@ import Chatbot from './components/Chatbot';
 import SupportModal from './components/SupportModal';
 import EscalacoesPage from './pages/EscalacoesPage';
 import { formatArticleContent, formatPreviewText, formatResponseText } from './utils/textFormatter';
+import { artigosHTML } from './data/artigosHTML';
 
 // Sistema de gerenciamento de estado para modal crítico
 const CriticalModalManager = {
@@ -3300,21 +3301,42 @@ const ArtigosPage = () => {
             try {
                 setLoading(true);
                 const response = await articlesAPI.getAll();
-                console.log('Artigos carregados:', response.data);
+                console.log('Artigos carregados da API:', response.data);
                 
+                // Combinar artigos da API com artigos HTML
+                let allArticles = [];
+                
+                // Adicionar artigos da API se existirem
                 if (response.data && response.data.length > 0) {
-                    setArticles(response.data);
+                    allArticles = [...response.data];
+                }
+                
+                // Adicionar artigos HTML (sempre disponíveis)
+                if (artigosHTML && artigosHTML.length > 0) {
+                    // Verificar se já existem para evitar duplicatas
+                    const existingIds = new Set(allArticles.map(a => a._id || a.id));
+                    const newHTMLArticles = artigosHTML.filter(a => !existingIds.has(a._id));
+                    allArticles = [...allArticles, ...newHTMLArticles];
+                }
+                
+                if (allArticles.length > 0) {
+                    setArticles(allArticles);
+                    console.log(`✅ Total de ${allArticles.length} artigos carregados (${response.data?.length || 0} da API + ${artigosHTML.length} HTML)`);
                 } else {
-                    console.warn('⚠️ Dados de artigos não encontrados ou vazios, usando mock...');
-                    throw new Error('Dados vazios da API');
+                    console.warn('⚠️ Nenhum artigo encontrado');
+                    setArticles([]);
                 }
             } catch (error) {
                 console.error('Erro ao carregar artigos da API:', error);
-                console.log('📋 Usando dados mock como fallback...');
+                console.log('📋 Usando apenas artigos HTML como fallback...');
                 
-                // Em caso de erro, usar arrays vazios
-                console.warn('⚠️ Usando arrays vazios como fallback');
-                setArticles([]);
+                // Em caso de erro, usar apenas artigos HTML
+                if (artigosHTML && artigosHTML.length > 0) {
+                    setArticles(artigosHTML);
+                    console.log(`✅ ${artigosHTML.length} artigos HTML carregados como fallback`);
+                } else {
+                    setArticles([]);
+                }
             } finally {
                 setLoading(false);
             }
