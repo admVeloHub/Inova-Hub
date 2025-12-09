@@ -1081,42 +1081,23 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   });
   
   // 2. Processar tags <img> existentes que contenham URLs do bucket
+  // IMPORTANTE: Remover completamente as tags <img> do HTML, pois as imagens são renderizadas separadamente via getAllImages
   processedHtml = processedHtml.replace(/<img([^>]*src=["'])(https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^"']+|img_artigos\/[^"']+))([^>]*)>/gi, (match, beforeSrc, bucketUrl, afterAttrs) => {
     const pathMatch = bucketUrl.match(/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/);
     if (pathMatch) {
-      const cleanPath = pathMatch[1];
-      const encodedPath = cleanPath.split('/').map(part => encodeURIComponent(part)).join('/');
-      const newSrc = `${API_BASE_URL}/images/${encodedPath}`;
-      
-      // Remover atributo alt se contiver nome do arquivo (preservar se for descritivo)
-      let processedAttrs = afterAttrs;
-      
-      // Remover alt que contenha apenas nome de arquivo (ex: "mascote joia.jpg")
-      processedAttrs = processedAttrs.replace(/\s+alt=["']([^"']*\.(jpg|jpeg|png|gif|webp))["']/gi, '');
-      
-      // Remover title se contiver apenas nome de arquivo
-      processedAttrs = processedAttrs.replace(/\s+title=["']([^"']*\.(jpg|jpeg|png|gif|webp))["']/gi, '');
-      
-      // Preservar width, height e style (dimensões definidas pelo Console)
-      return `<img${beforeSrc}${newSrc}${processedAttrs}>`;
+      // Remover completamente a tag <img> - a imagem será renderizada separadamente via getAllImages
+      return '';
     }
     return match;
   });
   
-  // 2b. Processar tags <img> que contenham URLs do Cloud Run (normalizar para API_BASE_URL)
+  // 2b. Processar tags <img> que contenham URLs do Cloud Run
+  // IMPORTANTE: Remover completamente as tags <img> do HTML, pois as imagens são renderizadas separadamente via getAllImages
   processedHtml = processedHtml.replace(/<img([^>]*src=["'])(https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^"']+|img_artigos\/[^"']+))([^>]*)>/gi, (match, beforeSrc, cloudRunUrl, afterAttrs) => {
     const pathMatch = cloudRunUrl.match(/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/);
     if (pathMatch) {
-      const cleanPath = pathMatch[1];
-      const encodedPath = cleanPath.split('/').map(part => encodeURIComponent(part)).join('/');
-      const newSrc = `${API_BASE_URL}/images/${encodedPath}`;
-      
-      // Remover atributo alt se contiver nome do arquivo
-      let processedAttrs = afterAttrs;
-      processedAttrs = processedAttrs.replace(/\s+alt=["']([^"']*\.(jpg|jpeg|png|gif|webp))["']/gi, '');
-      processedAttrs = processedAttrs.replace(/\s+title=["']([^"']*\.(jpg|jpeg|png|gif|webp))["']/gi, '');
-      
-      return `<img${beforeSrc}${newSrc}${processedAttrs}>`;
+      // Remover completamente a tag <img> - a imagem será renderizada separadamente via getAllImages
+      return '';
     }
     return match;
   });
@@ -1142,21 +1123,24 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   processedHtml = processedHtml.replace(/https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^\s\)]+|img_artigos\/[^\s\)]+)/g, '');
   
   // 5. Processar HTML escapado (quando o HTML aparece como texto)
-  // Se encontrar tags HTML escapadas como &lt;img, converter de volta
+  // Se encontrar tags HTML escapadas como &lt;img, remover completamente se for do bucket/Cloud Run
   processedHtml = processedHtml.replace(/&lt;img([^&]*?)src=["']([^"']+)["']([^&]*?)&gt;/gi, (match, beforeSrc, srcUrl, afterAttrs) => {
-    // Se a URL for do bucket ou Cloud Run, processar
+    // Se a URL for do bucket ou Cloud Run, remover completamente (imagem será renderizada separadamente)
     if (srcUrl.includes('storage.googleapis.com') || srcUrl.includes('.run.app/api/images/')) {
       const pathMatch = srcUrl.match(/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/);
       if (pathMatch) {
-        const cleanPath = pathMatch[1];
-        const encodedPath = cleanPath.split('/').map(part => encodeURIComponent(part)).join('/');
-        const newSrc = `${API_BASE_URL}/images/${encodedPath}`;
-        return `<img${beforeSrc}src="${newSrc}"${afterAttrs}>`;
+        // Remover completamente a tag <img> escapada
+        return '';
       }
     }
-    // Se não for do bucket, apenas desescapar
+    // Se não for do bucket, apenas desescapar (pode ser uma imagem externa válida)
     return `<img${beforeSrc}src="${srcUrl}"${afterAttrs}>`;
   });
+  
+  // 6. Remover qualquer tag <img> que contenha URLs problemáticas que possam ter escapado dos regex anteriores
+  // Isso captura casos onde o HTML pode estar mal formatado ou parcialmente escapado
+  processedHtml = processedHtml.replace(/<img[^>]*src=["'][^"']*(storage\.googleapis\.com|\.run\.app\/api\/images)[^"']*["'][^>]*>/gi, '');
+  processedHtml = processedHtml.replace(/&lt;img[^&]*src=["'][^"']*(storage\.googleapis\.com|\.run\.app\/api\/images)[^"']*["'][^&]*&gt;/gi, '');
   
   console.log('🔍 processContentHtml - DEPOIS:', processedHtml.substring(0, 200));
   
