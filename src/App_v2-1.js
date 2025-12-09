@@ -1144,7 +1144,7 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   
   // 7. Processar links <a> que contenham imagens do bucket/Cloud Run
   // Remover completamente links que apontam para imagens (as imagens serão renderizadas separadamente)
-  processedHtml = processedHtml.replace(/<a[^>]*href=["'](https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^"']+|img_artigos\/[^"']+)|https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^"']+|img_artigos\/[^"']+))["'][^>]*>([^<]*)<\/a>/gi, (match, imageUrl, linkText) => {
+  processedHtml = processedHtml.replace(/<a[^>]*href=["'](https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^"']+|img_artigos\/[^"']+)|https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^"']+|img_artigos\/[^"']+))["'][^>]*>([^<]*)<\/a>/gi, () => {
     // Remover completamente o link - a imagem será renderizada separadamente via getAllImages
     return '';
   });
