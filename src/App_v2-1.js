@@ -3744,10 +3744,20 @@ const ArtigosPage = () => {
                                 ) : null;
                             })()}
                             
-                            <div 
-                                className="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
-                                dangerouslySetInnerHTML={{ __html: processContentHtml(formatResponseText(selectedArticle.content, 'article'), selectedArticle?.media?.images || []) }}
-                            />
+                            {/* Renderizar conteúdo do artigo */}
+                            {selectedArticle._id && selectedArticle._id.startsWith('artigo-') ? (
+                                // Para artigos HTML, renderizar diretamente preservando a estrutura
+                                <div 
+                                    className="artigo-html-content"
+                                    dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
+                                />
+                            ) : (
+                                // Para artigos da API, usar processamento normal
+                                <div 
+                                    className="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
+                                    dangerouslySetInnerHTML={{ __html: processContentHtml(formatResponseText(selectedArticle.content, 'article'), selectedArticle?.media?.images || []) }}
+                                />
+                            )}
                             
                             {selectedArticle.tag && (
                                 <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
