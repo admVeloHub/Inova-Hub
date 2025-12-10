@@ -1004,11 +1004,17 @@ const getYouTubeEmbedUrl = (item) => {
 const getAllImages = (item) => {
   // Processar item.media.images ou item.images
   const images = item?.media?.images || item?.images || [];
+  console.log('🔍 getAllImages - item:', item?.title || item?.titulo || 'sem título');
+  console.log('🔍 getAllImages - images array:', images);
+  console.log('🔍 getAllImages - images type:', typeof images, 'isArray:', Array.isArray(images));
+  
   if (!Array.isArray(images) || images.length === 0) {
+    console.log('🔍 getAllImages - Sem imagens ou array vazio');
     return [];
   }
   
-  return images.map(img => {
+  return images.map((img, idx) => {
+    console.log(`🔍 getAllImages - processando imagem ${idx}:`, img, 'tipo:', typeof img);
     // Se é caminho relativo
     if (typeof img === 'string' && (img.startsWith('img_velonews/') || img.startsWith('img_artigos/') || img.startsWith('/img_velonews/') || img.startsWith('/img_artigos/'))) {
       const cleanPath = img.startsWith('/') ? img.substring(1) : img;
@@ -1048,8 +1054,15 @@ const getAllImages = (item) => {
       }
     }
     
+    console.log(`🔍 getAllImages - imagem ${idx} retornou null`);
     return null;
-  }).filter(url => url !== null);
+  }).filter(url => {
+    const isValid = url !== null && url !== undefined && url !== '';
+    if (!isValid) {
+      console.log('🔍 getAllImages - filtrando URL inválida:', url);
+    }
+    return isValid;
+  });
 };
 
 // Função para processar conteúdo HTML e remover URLs do bucket GCS
