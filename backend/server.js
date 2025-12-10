@@ -145,7 +145,7 @@ if (process.env.NODE_ENV === 'development') {
 
 const app = express();
 // REGRA: Backend porta 8090 na rede local | Frontend porta 8080
-const PORT = process.env.PORT || 8090;
+const PORT = process.env.PORT || 8080;
 
 // Middleware
 app.use(cors({
