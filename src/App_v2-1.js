@@ -1215,13 +1215,27 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
     '├á': 'á', '├é': 'é', '├ô': 'ô', '├à': 'à', '├è': 'è', '├ì': 'ì', '├ò': 'ò', '├ù': 'ù',
     '├Ú': 'Ú', '├Í': 'Í', '├Ó': 'Ó', '├Ã': 'Ã', '├Ê': 'Ê', '├Õ': 'Õ', '├Ç': 'Ç',
     '├Á': 'Á', '├É': 'É', '├Ô': 'Ô', '├À': 'À', '├È': 'È', '├Ì': 'Ì', '├Ò': 'Ò', '├Ù': 'Ù',
-    '├º': 'º', '├ª': 'ª', '├®': '®', '├©': '©', '├°': '°', '├±': '±', '├×': '×', '├÷': '÷'
+    '├º': 'º', '├ª': 'ª', '├®': '®', '├©': '©', '├°': '°', '├±': '±', '├×': '×', '├÷': '÷',
+    // Outros padrões comuns
+    'ibagens': 'imagens', // Corrige "ibagens" para "imagens"
+    'ibagem': 'imagem' // Corrige "ibagem" para "imagem"
   };
   
   Object.keys(charReplacements).forEach(broken => {
     const regex = new RegExp(broken.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
     processedHtml = processedHtml.replace(regex, charReplacements[broken]);
   });
+  
+  // 17. Remover caracteres de substituição Unicode (U+FFFD) que aparecem como ponto de interrogação
+  processedHtml = processedHtml.replace(/\uFFFD/g, '');
+  
+  // 18. Corrigir caracteres que aparecem como ponto de interrogação seguidos de letra acentuada
+  // Padrão: ?ú, ?í, ?ó, etc. (onde ? é o caractere de substituição)
+  processedHtml = processedHtml.replace(/\uFFFD([úíóãêõçáéôàèìòùÚÍÓÃÊÕÇÁÉÔÀÈÌÒÙ])/g, '$1');
+  
+  // 19. Corrigir padrões específicos onde o ponto de interrogação aparece antes de caracteres acentuados
+  // Exemplo: "?úo" → "ção", "?é" → "é"
+  processedHtml = processedHtml.replace(/\?([úíóãêõçáéôàèìòùÚÍÓÃÊÕÇÁÉÔÀÈÌÒÙ])/g, '$1');
   
   console.log('🔍 processContentHtml - DEPOIS:', processedHtml.substring(0, 200));
   
