@@ -447,7 +447,7 @@ const CriticalNewsModal = ({ news, onClose, onAcknowledge }) => {
         <h2 className="text-2xl font-bold text-red-600 mb-4">{news.title}</h2>
                  <div 
              className="prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200"
-             dangerouslySetInnerHTML={{ __html: processContentHtml(news.content || '', news?.media?.images || [], false) }}
+             dangerouslySetInnerHTML={{ __html: processContentHtml(news.content || '', news?.media?.images || []) }}
          />
         <div className="mt-8 flex justify-between items-center">
           <button
