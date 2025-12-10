@@ -253,14 +253,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Health check root também (Cloud Run pode verificar /)
-app.get('/', (req, res) => {
-  res.status(200).json({ 
-    success: true, 
-    message: 'VeloHub API está funcionando!',
-    timestamp: new Date().toISOString()
-  });
-});
+// Health check em /api/health (Cloud Run pode verificar)
+// A rota / serve o frontend React
 
 // Test connection endpoint
 app.get('/api/test', async (req, res) => {
