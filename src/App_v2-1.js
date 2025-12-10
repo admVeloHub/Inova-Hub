@@ -3460,7 +3460,13 @@ const ArtigosPage = () => {
     };
 
     const handleArticleClick = (article) => {
-        setSelectedArticle(article);
+        // Toggle: se já está expandido, fecha; senão, expande
+        const articleId = article._id || article.id;
+        if (expandedArticleId === articleId) {
+            setExpandedArticleId(null);
+        } else {
+            setExpandedArticleId(articleId);
+        }
     };
 
     return (
