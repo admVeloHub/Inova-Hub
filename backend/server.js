@@ -2551,9 +2551,22 @@ const server = app.listen(PORT, '0.0.0.0', (error) => {
   console.log(`✅✅✅ SERVIDOR ESCUTANDO NA PORTA ${PORT} ✅✅✅`);
   console.log(`🌐 Health check: http://0.0.0.0:${PORT}/api/health`);
   
-  // Carregar serviços em background (não bloqueia startup)
+  // Carregar serviços e configs em background (não bloqueia startup)
   setTimeout(() => {
     loadServices();
+    
+    // Log de configurações WhatsApp após carregar (apenas em desenvolvimento)
+    if (process.env.NODE_ENV === 'development' && config) {
+      console.log('📱 Configurações WhatsApp:');
+      console.log('   - WHATSAPP_API_URL:', config.WHATSAPP_API_URL ? '✅ Configurado' : '❌ Não configurado');
+      console.log('   - WHATSAPP_DEFAULT_JID:', config.WHATSAPP_DEFAULT_JID ? '✅ Configurado' : '❌ Não configurado');
+      if (config.WHATSAPP_API_URL) {
+        console.log('   - URL:', config.WHATSAPP_API_URL);
+      }
+      if (config.WHATSAPP_DEFAULT_JID) {
+        console.log('   - JID:', config.WHATSAPP_DEFAULT_JID);
+      }
+    }
   }, 100);
   
   // Tentar conectar ao MongoDB em background (não bloqueia o startup)
