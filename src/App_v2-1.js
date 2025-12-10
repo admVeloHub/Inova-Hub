@@ -1157,8 +1157,10 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   
   // 10. Remover nomes de arquivos de imagem que aparecem como texto solto após HTML quebrado
   // Isso captura casos específicos como "! target='_blank'>Comprovante_20251121T084226679755.png"
-  // Também captura padrões como "! (1).png)" ou "! (17\")"
+  // Também captura padrões como "! (1).png)" ou "! (17\")" ou "!.png)"
   processedHtml = processedHtml.replace(/!?\s*\([^)]*\)\.(jpg|jpeg|png|gif|webp|svg)\)?/gi, '');
+  processedHtml = processedHtml.replace(/!\.(jpg|jpeg|png|gif|webp|svg)\)?/gi, '');
+  processedHtml = processedHtml.replace(/!\s*\([^)]*\)/gi, '');
   processedHtml = processedHtml.replace(/([!>]\s*)([A-Za-z0-9_\-]+\.(jpg|jpeg|png|gif|webp|svg))(?=\s|$|\))/gi, (match, prefix) => {
     // Remover apenas se houver "!" ou ">" antes (indicando HTML quebrado)
     if (prefix.includes('!') || prefix.includes('>')) {
@@ -1171,6 +1173,37 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   // Padrões como "! (1).png)" que aparecem como clicáveis
   processedHtml = processedHtml.replace(/<a[^>]*>!?\s*\([^)]*\)\.(jpg|jpeg|png|gif|webp|svg)\)?<\/a>/gi, '');
   processedHtml = processedHtml.replace(/<a[^>]*href=["'][^"']*["'][^>]*>!?\s*\([^)]*\)\.(jpg|jpeg|png|gif|webp|svg)\)?<\/a>/gi, '');
+  
+  // 12. Remover padrões específicos que aparecem como texto clicável
+  // Exemplos: "!.png)", "! (1).png)", "! (17\")", "!.png)"
+  processedHtml = processedHtml.replace(/!?\s*\(?\d+\)?\.(jpg|jpeg|png|gif|webp|svg)\)?/gi, '');
+  processedHtml = processedHtml.replace(/!?\s*\([^)]*\)\s*\.(jpg|jpeg|png|gif|webp|svg)/gi, '');
+  
+  // 13. Remover qualquer texto que comece com "!" seguido de ponto e extensão de imagem
+  // Captura casos como "!.png)" que aparecem como texto
+  processedHtml = processedHtml.replace(/!\s*\.(jpg|jpeg|png|gif|webp|svg)\)?/gi, '');
+  
+  // 14. Remover qualquer link <a> que contenha apenas "!" ou padrões de imagem quebrados
+  processedHtml = processedHtml.replace(/<a[^>]*>!\s*[^<]*<\/a>/gi, '');
+  processedHtml = processedHtml.replace(/<a[^>]*href=["'][^"']*["'][^>]*>!\s*[^<]*<\/a>/gi, '');
+  
+  // 15. Remover qualquer texto solto que seja apenas "!" seguido de parênteses e extensão
+  processedHtml = processedHtml.replace(/!\s*\([^)]*\)\s*\.(jpg|jpeg|png|gif|webp|svg)/gi, '');
+  
+  // 16. Corrigir caracteres quebrados comuns (encoding issues)
+  // Substituir padrões comuns de caracteres quebrados por caracteres corretos
+  const charReplacements = {
+    '├ú': 'ú', '├í': 'í', '├ó': 'ó', '├ã': 'ã', '├ê': 'ê', '├õ': 'õ', '├ç': 'ç',
+    '├á': 'á', '├é': 'é', '├ô': 'ô', '├à': 'à', '├è': 'è', '├ì': 'ì', '├ò': 'ò', '├ù': 'ù',
+    '├Ú': 'Ú', '├Í': 'Í', '├Ó': 'Ó', '├Ã': 'Ã', '├Ê': 'Ê', '├Õ': 'Õ', '├Ç': 'Ç',
+    '├Á': 'Á', '├É': 'É', '├Ô': 'Ô', '├À': 'À', '├È': 'È', '├Ì': 'Ì', '├Ò': 'Ò', '├Ù': 'Ù',
+    '├º': 'º', '├ª': 'ª', '├®': '®', '├©': '©', '├°': '°', '├±': '±', '├×': '×', '├÷': '÷'
+  };
+  
+  Object.keys(charReplacements).forEach(broken => {
+    const regex = new RegExp(broken.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    processedHtml = processedHtml.replace(regex, charReplacements[broken]);
+  });
   
   console.log('🔍 processContentHtml - DEPOIS:', processedHtml.substring(0, 200));
   
