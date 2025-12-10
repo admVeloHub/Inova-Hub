@@ -1097,25 +1097,26 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
     return '';
   });
   
-  // 3. Substituir URLs do bucket em texto simples (caso apareçam como links)
-  processedHtml = processedHtml.replace(bucketUrlPattern, (match, imagePath) => {
-    const cleanPath = imagePath;
-    const encodedPath = cleanPath.split('/').map(part => encodeURIComponent(part)).join('/');
-    return `${API_BASE_URL}/images/${encodedPath}`;
-  });
+  // 3. Remover URLs do bucket em texto simples (NÃO substituir, apenas remover)
+  // As imagens serão renderizadas separadamente via getAllImages
+  processedHtml = processedHtml.replace(bucketUrlPattern, '');
   
-  // 3b. Substituir URLs do Cloud Run em texto simples
-  processedHtml = processedHtml.replace(cloudRunImagePattern, (match, imagePath) => {
-    const cleanPath = imagePath;
-    const encodedPath = cleanPath.split('/').map(part => encodeURIComponent(part)).join('/');
-    return `${API_BASE_URL}/images/${encodedPath}`;
-  });
+  // 3b. Remover URLs do Cloud Run em texto simples (NÃO substituir, apenas remover)
+  // As imagens serão renderizadas separadamente via getAllImages
+  processedHtml = processedHtml.replace(cloudRunImagePattern, '');
   
-  // 4. Remover texto que contenha apenas URLs do bucket (linhas soltas)
-  processedHtml = processedHtml.replace(/https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^\s\)]+|img_artigos\/[^\s\)]+)/g, '');
+  // 3c. Remover URLs completas do Cloud Run que aparecem como texto solto
+  // Padrão: !https://velohub-*.run.app/api/images/img_artigos/...
+  processedHtml = processedHtml.replace(/!?\s*https?:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^\s\)"']+|img_artigos\/[^\s\)"']+)/gi, '');
   
-  // 4b. Remover texto que contenha apenas URLs do Cloud Run (linhas soltas)
-  processedHtml = processedHtml.replace(/https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^\s\)]+|img_artigos\/[^\s\)]+)/g, '');
+  // 3d. Remover URLs completas do bucket GCS que aparecem como texto solto
+  processedHtml = processedHtml.replace(/!?\s*https?:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^\s\)"']+|img_artigos\/[^\s\)"']+)/gi, '');
+  
+  // 4. Remover texto que contenha apenas URLs do bucket (linhas soltas) - já feito em 3d
+  // Mantido para compatibilidade, mas 3d já cobre isso
+  
+  // 4b. Remover texto que contenha apenas URLs do Cloud Run (linhas soltas) - já feito em 3c
+  // Mantido para compatibilidade, mas 3c já cobre isso
   
   // 5. Processar HTML escapado (quando o HTML aparece como texto)
   // Se encontrar tags HTML escapadas como &lt;img, remover completamente se for do bucket/Cloud Run
@@ -1139,16 +1140,33 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   
   // 7. Processar links <a> que contenham imagens do bucket/Cloud Run
   // Remover completamente links que apontam para imagens (as imagens serão renderizadas separadamente)
-  processedHtml = processedHtml.replace(/<a[^>]*href=["'](https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^"']+|img_artigos\/[^"']+)|https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^"']+|img_artigos\/[^"']+))["'][^>]*>([^<]*)<\/a>/gi, () => {
-    // Remover completamente o link - a imagem será renderizada separadamente via getAllImages
-    return '';
-  });
+  // Inclui casos onde o link está quebrado ou malformado
+  processedHtml = processedHtml.replace(/<a[^>]*href=["'](https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^"']+|img_artigos\/[^"']+)|https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^"']+|img_artigos\/[^"']+))["'][^>]*>([^<]*)<\/a>/gi, '');
+  
+  // 7b. Remover links <a> quebrados que contenham URLs de imagem no texto
+  // Exemplo: <a ...>!https://velohub-*.run.app/api/images/img_artigos/...</a>
+  processedHtml = processedHtml.replace(/<a[^>]*>!?\s*https?:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^<]+|img_artigos\/[^<]+)<\/a>/gi, '');
+  processedHtml = processedHtml.replace(/<a[^>]*>!?\s*https?:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^<]+|img_artigos\/[^<]+)<\/a>/gi, '');
+  
+  // 7c. Remover links <a> quebrados com atributos soltos e URLs de imagem
+  // Exemplo: <a ...>image (17" target="_blank" rel="noopener noreferrer">image (17. .png.png)
+  processedHtml = processedHtml.replace(/<a[^>]*>([^<]*\([^)]*\)[^<]*\.(jpg|jpeg|png|gif|webp|svg)[^<]*)<\/a>/gi, '');
   
   // 8. Processar casos onde há HTML malformado ou quebrado
   // Exemplo: "! target="_blank" rel="noopener noreferrer">Comprovante_20251121T084226679755.png"
   // Isso pode ser um link ou imagem quebrada
   processedHtml = processedHtml.replace(/!?\s*target=["']_blank["']\s*rel=["']noopener noreferrer["']\s*&gt;([^<]+\.(jpg|jpeg|png|gif|webp|svg))/gi, '');
   processedHtml = processedHtml.replace(/!?\s*target=["']_blank["']\s*rel=["']noopener noreferrer["']\s*>([^<]+\.(jpg|jpeg|png|gif|webp|svg))/gi, '');
+  
+  // 8b. Remover padrões específicos de HTML quebrado com URLs de imagem
+  // Exemplo: "image (17" target="_blank" rel="noopener noreferrer">image (17. .png.png)"
+  processedHtml = processedHtml.replace(/[^<]*\([^)]*\)["']\s*target=["']_blank["']\s*rel=["']noopener noreferrer["']\s*&gt;[^<]*\([^)]*\)\.(jpg|jpeg|png|gif|webp|svg)/gi, '');
+  processedHtml = processedHtml.replace(/[^<]*\([^)]*\)["']\s*target=["']_blank["']\s*rel=["']noopener noreferrer["']\s*>[^<]*\([^)]*\)\.(jpg|jpeg|png|gif|webp|svg)/gi, '');
+  
+  // 8c. Remover URLs codificadas que aparecem no texto
+  // Exemplo: "image%3C/a%3E (17" target="_blank" rel="noopener noreferrer">image (17..png.png)"
+  processedHtml = processedHtml.replace(/[^<]*%3C\/a%3E[^<]*\([^)]*\)["']\s*target=["']_blank["']\s*rel=["']noopener noreferrer["']\s*&gt;[^<]*\([^)]*\)\.(jpg|jpeg|png|gif|webp|svg)/gi, '');
+  processedHtml = processedHtml.replace(/[^<]*%3C\/a%3E[^<]*\([^)]*\)["']\s*target=["']_blank["']\s*rel=["']noopener noreferrer["']\s*>[^<]*\([^)]*\)\.(jpg|jpeg|png|gif|webp|svg)/gi, '');
   
   // 9. Remover atributos HTML soltos que possam ter sobrado de tags quebradas
   // Exemplo: "target="_blank" rel="noopener noreferrer">" sozinho no texto
