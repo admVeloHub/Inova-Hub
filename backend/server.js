@@ -2537,7 +2537,29 @@ const server = app.listen(PORT, '0.0.0.0', (error) => {
   
   // LOG CRÍTICO: Servidor está escutando (Cloud Run precisa ver isso)
   console.log(`✅✅✅ SERVIDOR ESCUTANDO NA PORTA ${PORT} ✅✅✅`);
-  console.log(`🌐 Health check: http://0.0.0.0:${PORT}/api/health`);
+  
+  // Logs de diagnóstico após servidor iniciar (não bloqueia startup)
+  setTimeout(() => {
+    console.log("🔍 Variáveis de ambiente:");
+    console.log(`- NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`- PORT: ${process.env.PORT}`);
+    console.log(`- MONGO_ENV existe: ${!!process.env.MONGO_ENV}`);
+    
+    if (process.env.MONGO_ENV) {
+      console.log('✅ Arquivo env carregado - MONGO_ENV encontrado');
+      console.log('🔍 MONGO_ENV (primeiros 50 chars):', process.env.MONGO_ENV.substring(0, 50) + '...');
+    } else {
+      console.warn('⚠️ Arquivo env não encontrado ou MONGO_ENV não definido');
+    }
+    
+    console.log('🔍 Verificando configuração MongoDB...');
+    console.log('🔍 MONGO_ENV definida:', !!uri);
+    if (uri) {
+      console.log('🔍 MONGO_ENV (primeiros 50 chars):', uri.substring(0, 50) + '...');
+    } else {
+      console.warn('⚠️ MONGO_ENV não configurada - servidor iniciará sem MongoDB');
+    }
+  }, 50);
   
   // Carregar serviços e configs em background (não bloqueia startup)
   setTimeout(() => {
