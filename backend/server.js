@@ -82,51 +82,27 @@ const localConfig = require('./config-local');
 
 // Importar serviços do chatbot
 // VERSION: v2.19.0 | DATE: 2025-01-10 | AUTHOR: VeloHub Development Team
+// Serviços serão carregados DEPOIS do servidor iniciar (não bloqueia startup)
 let aiService, searchService, sessionService, dataCache, userActivityLogger, botFeedbackService, responseFormatter, userSessionLogger;
 
-console.log('🔄 Iniciando carregamento de serviços...');
-
-try {
-  console.log('📦 Carregando aiService...');
-  aiService = require('./services/chatbot/aiService');
-  console.log('✅ aiService carregado');
-  
-  console.log('📦 Carregando searchService...');
-  searchService = require('./services/chatbot/searchService');
-  console.log('✅ searchService carregado');
-  
-  console.log('📦 Carregando sessionService...');
-  sessionService = require('./services/chatbot/sessionService');
-  console.log('✅ sessionService carregado');
-  
-  console.log('📦 Carregando dataCache...');
-  dataCache = require('./services/chatbot/dataCache');
-  console.log('✅ dataCache carregado');
-  
-  console.log('📦 Carregando userActivityLogger...');
-  userActivityLogger = require('./services/logging/userActivityLogger');
-  console.log('✅ userActivityLogger carregado');
-  
-  console.log('📦 Carregando botFeedbackService...');
-  botFeedbackService = require('./services/chatbot/botFeedbackService');
-  console.log('✅ botFeedbackService carregado');
-  
-  console.log('📦 Carregando responseFormatter...');
-  responseFormatter = require('./services/chatbot/responseFormatter');
-  console.log('✅ responseFormatter carregado');
-  
-  console.log('📦 Carregando userSessionLogger...');
-  userSessionLogger = require('./services/logging/userSessionLogger');
-  console.log('✅ userSessionLogger carregado');
-  
-  console.log('🎉 Todos os serviços carregados com sucesso!');
-} catch (error) {
-  console.error('❌ Erro ao carregar serviços:', error.message);
-  console.error('Stack:', error.stack);
-  console.error('⚠️ Continuando sem alguns serviços (modo degradado)');
-  // Não encerrar o processo - permitir que o servidor inicie mesmo sem alguns serviços
-  // Isso evita timeout no Cloud Run
-}
+// Função para carregar serviços em background (não bloqueia startup)
+const loadServices = () => {
+  try {
+    console.log('📦 Carregando serviços em background...');
+    aiService = require('./services/chatbot/aiService');
+    searchService = require('./services/chatbot/searchService');
+    sessionService = require('./services/chatbot/sessionService');
+    dataCache = require('./services/chatbot/dataCache');
+    userActivityLogger = require('./services/logging/userActivityLogger');
+    botFeedbackService = require('./services/chatbot/botFeedbackService');
+    responseFormatter = require('./services/chatbot/responseFormatter');
+    userSessionLogger = require('./services/logging/userSessionLogger');
+    console.log('✅ Todos os serviços carregados com sucesso!');
+  } catch (error) {
+    console.error('❌ Erro ao carregar serviços:', error.message);
+    console.error('⚠️ Continuando sem alguns serviços (modo degradado)');
+  }
+};
 
 // Carregar config para verificação de configurações WhatsApp
 const config = require('./config');
@@ -2545,6 +2521,11 @@ const server = app.listen(PORT, '0.0.0.0', (error) => {
   // LOG CRÍTICO: Servidor está escutando (Cloud Run precisa ver isso)
   console.log(`✅✅✅ SERVIDOR ESCUTANDO NA PORTA ${PORT} ✅✅✅`);
   console.log(`🌐 Health check: http://0.0.0.0:${PORT}/api/health`);
+  
+  // Carregar serviços em background (não bloqueia startup)
+  setTimeout(() => {
+    loadServices();
+  }, 100);
   
   // Tentar conectar ao MongoDB em background (não bloqueia o startup)
   // IMPORTANTE: Delay para não bloquear startup no Cloud Run
