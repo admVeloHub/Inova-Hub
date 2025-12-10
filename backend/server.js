@@ -111,24 +111,26 @@ const loadServices = () => {
     responseFormatter = require('./services/chatbot/responseFormatter');
     userSessionLogger = require('./services/logging/userSessionLogger');
     console.log('✅ Todos os serviços carregados com sucesso!');
+    
+    // Log de configurações WhatsApp após carregar (apenas em desenvolvimento)
+    if (process.env.NODE_ENV === 'development' && config) {
+      console.log('📱 Configurações WhatsApp:');
+      console.log('   - WHATSAPP_API_URL:', config.WHATSAPP_API_URL ? '✅ Configurado' : '❌ Não configurado');
+      console.log('   - WHATSAPP_DEFAULT_JID:', config.WHATSAPP_DEFAULT_JID ? '✅ Configurado' : '❌ Não configurado');
+      if (config.WHATSAPP_API_URL) {
+        console.log('   - URL:', config.WHATSAPP_API_URL);
+      }
+      if (config.WHATSAPP_DEFAULT_JID) {
+        console.log('   - JID:', config.WHATSAPP_DEFAULT_JID);
+      }
+    }
   } catch (error) {
     console.error('❌ Erro ao carregar serviços:', error.message);
     console.error('⚠️ Continuando sem alguns serviços (modo degradado)');
   }
 };
 
-// Log de configurações WhatsApp (apenas em desenvolvimento)
-if (process.env.NODE_ENV === 'development') {
-  console.log('📱 Configurações WhatsApp:');
-  console.log('   - WHATSAPP_API_URL:', config.WHATSAPP_API_URL ? '✅ Configurado' : '❌ Não configurado');
-  console.log('   - WHATSAPP_DEFAULT_JID:', config.WHATSAPP_DEFAULT_JID ? '✅ Configurado' : '❌ Não configurado');
-  if (config.WHATSAPP_API_URL) {
-    console.log('   - URL:', config.WHATSAPP_API_URL);
-  }
-  if (config.WHATSAPP_DEFAULT_JID) {
-    console.log('   - JID:', config.WHATSAPP_DEFAULT_JID);
-  }
-}
+// Log de configurações WhatsApp será feito após carregar configs em background
 
 const app = express();
 // REGRA: Backend porta 8090 na rede local | Frontend porta 8080
@@ -304,7 +306,17 @@ app.get('/api/test', async (req, res) => {
 // Test chatbot endpoint
 app.get('/api/chatbot/test', async (req, res) => {
   try {
-    const config = require('./config');
+    // Carregar config se ainda não foi carregado
+    if (!config) {
+      try {
+        config = require('./config');
+      } catch (e) {
+        return res.status(503).json({
+          success: false,
+          error: 'Config ainda não está disponível. Tente novamente em alguns segundos.'
+        });
+      }
+    }
     const aiStatus = aiService?.getConfigurationStatus?.() || { anyAvailable: false };
     
     res.json({
