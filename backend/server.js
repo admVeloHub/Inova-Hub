@@ -123,8 +123,9 @@ try {
 } catch (error) {
   console.error('❌ Erro ao carregar serviços:', error.message);
   console.error('Stack:', error.stack);
-  console.error('❌ Falha crítica - encerrando processo');
-  process.exit(1);
+  console.error('⚠️ Continuando sem alguns serviços (modo degradado)');
+  // Não encerrar o processo - permitir que o servidor inicie mesmo sem alguns serviços
+  // Isso evita timeout no Cloud Run
 }
 
 // Carregar config para verificação de configurações WhatsApp
