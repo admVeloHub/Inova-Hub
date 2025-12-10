@@ -276,15 +276,25 @@ const connectToMongo = async () => {
   return client;
 };
 
-// Health check endpoint (não depende do MongoDB)
+// Health check endpoint (não depende do MongoDB) - DEVE SER O PRIMEIRO ENDPOINT
+// Responde imediatamente para Cloud Run health checks
 app.get('/api/health', (req, res) => {
-  res.json({ 
+  res.status(200).json({ 
     success: true, 
     message: 'Servidor funcionando!',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     version: '1.0.0',
     environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Health check root também (Cloud Run pode verificar /)
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    success: true, 
+    message: 'VeloHub API está funcionando!',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -2535,11 +2545,9 @@ const server = app.listen(PORT, '0.0.0.0', (error) => {
     process.exit(1);
   }
   
-  console.log(`✅ Servidor backend rodando na porta ${PORT}`);
-  console.log(`🌐 Acessível em: http://localhost:${PORT}`);
-  console.log(`🌐 Acessível na rede local: http://0.0.0.0:${PORT}`);
-  console.log(`📡 Endpoint principal: http://localhost:${PORT}/api/data`);
-  console.log(`📡 Teste a API em: http://localhost:${PORT}/api/test`);
+  // LOG CRÍTICO: Servidor está escutando (Cloud Run precisa ver isso)
+  console.log(`✅✅✅ SERVIDOR ESCUTANDO NA PORTA ${PORT} ✅✅✅`);
+  console.log(`🌐 Health check: http://0.0.0.0:${PORT}/api/health`);
   
   // Tentar conectar ao MongoDB em background (não bloqueia o startup)
   // IMPORTANTE: Delay para não bloquear startup no Cloud Run
@@ -2547,7 +2555,7 @@ const server = app.listen(PORT, '0.0.0.0', (error) => {
     connectToMongo().catch(error => {
       console.warn('⚠️ MongoDB: Falha na conexão inicial, tentando reconectar...', error.message);
     });
-  }, 500); // Delay reduzido para 500ms
+  }, 1000); // Delay de 1 segundo para garantir que servidor já está escutando
   
   // Inicializar cache de status dos módulos
   setTimeout(async () => {
