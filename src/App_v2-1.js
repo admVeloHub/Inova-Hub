@@ -1270,12 +1270,23 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   
   // 20. Remover atributos HTML soltos que possam ter sobrado de tags <img> quebradas
   // Exemplo: alt="" width="590" style="width: 590px; height: auto; max-width: 100%; display: block; margin: 10px 0; border-radius: 8px;" />
+  // Ordem importa: remover combinações primeiro, depois individuais
+  // Remover atributos mesmo quando aparecem como texto solto (não dentro de tags)
   processedHtml = processedHtml.replace(/alt=["'][^"']*["']\s+width=["'][^"']*["']\s+style=["'][^"']*["']\s*\/?>/gi, '');
   processedHtml = processedHtml.replace(/width=["'][^"']*["']\s+style=["'][^"']*["']\s*\/?>/gi, '');
+  processedHtml = processedHtml.replace(/alt=["'][^"']*["']\s+width=["'][^"']*["']\s*\/?>/gi, '');
   processedHtml = processedHtml.replace(/style=["'][^"']*["']\s*\/?>/gi, '');
   processedHtml = processedHtml.replace(/alt=["'][^"']*["']\s*\/?>/gi, '');
   processedHtml = processedHtml.replace(/width=["'][^"']*["']\s*\/?>/gi, '');
   processedHtml = processedHtml.replace(/\/>/g, ''); // Remover fechamentos de tag soltos
+  
+  // 20b. Remover atributos que aparecem como texto solto (sem tags ao redor)
+  // Exemplo: alt="" width="590" style="..." /> aparecendo como texto
+  processedHtml = processedHtml.replace(/\s*alt=["'][^"']*["']\s+width=["'][^"']*["']\s+style=["'][^"']*["']\s*\/?>/gi, '');
+  processedHtml = processedHtml.replace(/\s*width=["'][^"']*["']\s+style=["'][^"']*["']\s*\/?>/gi, '');
+  processedHtml = processedHtml.replace(/\s*style=["'][^"']*["']\s*\/?>/gi, '');
+  processedHtml = processedHtml.replace(/\s*alt=["'][^"']*["']\s*\/?>/gi, '');
+  processedHtml = processedHtml.replace(/\s*width=["'][^"']*["']\s*\/?>/gi, '');
   
   // 21. Preservar formatação de texto (negrito, itálico, etc.)
   // As tags <strong>, <b>, <em>, <i> devem ser preservadas
