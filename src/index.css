@@ -625,6 +625,10 @@ code {
 .artigo-html-content {
   color: var(--cor-texto-principal);
   line-height: 1.7;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 
 .artigo-html-content .section {
@@ -673,6 +677,16 @@ code {
   margin-bottom: 1rem;
   line-height: 1.7;
   color: var(--cor-texto-principal);
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.artigo-html-content div,
+.artigo-html-content span {
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .artigo-html-content .section-intro {

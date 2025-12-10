@@ -1076,6 +1076,51 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   
   let processedHtml = htmlContent;
   
+  // 0. Extrair URLs de imagens do HTML antes de processar (para imagens coladas no meio do texto)
+  // Isso captura URLs que podem estar em tags <img> ou como texto solto
+  const extractedImageUrls = [];
+  
+  // Extrair de tags <img> com src válido (URLs externas, não do bucket/Cloud Run)
+  const imgTagMatches = processedHtml.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi);
+  if (imgTagMatches) {
+    imgTagMatches.forEach(match => {
+      const srcMatch = match.match(/src=["']([^"']+)["']/i);
+      if (srcMatch && srcMatch[1]) {
+        const url = srcMatch[1];
+        // Adicionar apenas se for URL válida e não for do bucket/Cloud Run (essas são processadas separadamente)
+        if (url.startsWith('http') && !url.includes('storage.googleapis.com') && !url.includes('.run.app/api/images/')) {
+          if (!extractedImageUrls.includes(url)) {
+            extractedImageUrls.push(url);
+          }
+        }
+      }
+    });
+  }
+  
+  // Extrair URLs de texto solto (URLs que aparecem como texto no HTML)
+  // Captura URLs que terminam com extensões de imagem
+  const urlMatches = processedHtml.match(/https?:\/\/[^\s<>"']+\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?[^\s<>"']*)?/gi);
+  if (urlMatches) {
+    urlMatches.forEach(url => {
+      // Adicionar apenas se não for do bucket/Cloud Run e não estiver já na lista
+      if (!url.includes('storage.googleapis.com') && !url.includes('.run.app/api/images/')) {
+        if (!extractedImageUrls.includes(url)) {
+          extractedImageUrls.push(url);
+        }
+      }
+    });
+  }
+  
+  // Adicionar URLs extraídas ao array mediaImages se não estiverem lá
+  if (extractedImageUrls.length > 0) {
+    console.log('🔍 processContentHtml - URLs de imagem extraídas do HTML:', extractedImageUrls);
+    extractedImageUrls.forEach(url => {
+      if (!mediaImages.includes(url)) {
+        mediaImages.push(url);
+      }
+    });
+  }
+  
   // Padrão para URLs do bucket GCS
   const bucketUrlPattern = /https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/g;
   
@@ -1115,7 +1160,7 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   // IMPORTANTE: Esta regex deve ser executada DEPOIS das outras remoções de <img> para capturar casos que escaparam
   processedHtml = processedHtml.replace(/<img[^>]*>/gi, (match) => {
     // Se a tag não tem src ou o src não é uma URL válida de imagem, remover completamente
-    const hasValidSrc = /src=["'](https?:\/\/[^"']+\.(jpg|jpeg|png|gif|webp|svg)|data:image\/[^"']+)/i.test(match);
+    const hasValidSrc = /src=["'](https?:\/\/[^"']+|data:image\/[^"']+)/i.test(match);
     if (!hasValidSrc) {
       // Remover tag sem src válido (imagens coladas no meio do texto)
       return '';
@@ -1125,6 +1170,7 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
       return '';
     }
     // Manter imagens externas válidas (não do bucket/Cloud Run)
+    // Isso inclui URLs do Google Chat (chat.google.com) e outras URLs externas
     return match;
   });
   
@@ -2371,7 +2417,53 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                         <div className="flex-1 overflow-y-auto p-4">
                             {/* Renderizar todas as imagens */}
                             {(() => {
-                                const allImages = getAllImages(selectedArticle);
+                                // Extrair URLs de imagens do HTML antes de chamar getAllImages
+                                const htmlContent = selectedArticle.content || '';
+                                const extractedImageUrls = [];
+                                
+                                // Extrair de tags <img> com src válido (URLs externas, não do bucket/Cloud Run)
+                                const imgTagMatches = htmlContent.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi);
+                                if (imgTagMatches) {
+                                    imgTagMatches.forEach(match => {
+                                        const srcMatch = match.match(/src=["']([^"']+)["']/i);
+                                        if (srcMatch && srcMatch[1]) {
+                                            const url = srcMatch[1];
+                                            // Adicionar apenas se for URL válida e não for do bucket/Cloud Run
+                                            if (url.startsWith('http') && !url.includes('storage.googleapis.com') && !url.includes('.run.app/api/images/')) {
+                                                if (!extractedImageUrls.includes(url)) {
+                                                    extractedImageUrls.push(url);
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                                
+                                // Extrair URLs de texto solto (URLs que aparecem como texto no HTML)
+                                const urlMatches = htmlContent.match(/https?:\/\/[^\s<>"']+\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?[^\s<>"']*)?/gi);
+                                if (urlMatches) {
+                                    urlMatches.forEach(url => {
+                                        // Adicionar apenas se não for do bucket/Cloud Run e não estiver já na lista
+                                        if (!url.includes('storage.googleapis.com') && !url.includes('.run.app/api/images/')) {
+                                            if (!extractedImageUrls.includes(url)) {
+                                                extractedImageUrls.push(url);
+                                            }
+                                        }
+                                    });
+                                }
+                                
+                                // Adicionar URLs extraídas ao objeto do artigo temporariamente
+                                const articleWithExtractedImages = {
+                                    ...selectedArticle,
+                                    media: {
+                                        ...selectedArticle.media,
+                                        images: [
+                                            ...(selectedArticle?.media?.images || []),
+                                            ...extractedImageUrls
+                                        ]
+                                    }
+                                };
+                                
+                                const allImages = getAllImages(articleWithExtractedImages);
                                 return allImages.length > 0 && (
                                     <div className="mb-4 space-y-3">
                                         {allImages.map((imgUrl, idx) => {
