@@ -46,16 +46,8 @@ const shouldUseLocalFallback = () => {
          !process.env.MONGODB_URI;
 };
 
-// LOG DE DIAGNÓSTICO #1: Identificar a versão do código
-console.log("🚀 INICIANDO APLICAÇÃO - VERSÃO DO CÓDIGO: 1.5.5 - DIAGNÓSTICO ATIVO");
-
-// LOG DE DIAGNÓSTICO #2: Verificar as variáveis de ambiente
-console.log("🔍 Verificando variáveis de ambiente...");
-console.log(`- NODE_ENV: ${process.env.NODE_ENV}`);
-console.log(`- OPENAI_API_KEY existe: ${!!process.env.OPENAI_API_KEY}`);
-console.log(`- GEMINI_API_KEY existe: ${!!process.env.GEMINI_API_KEY}`);
-console.log(`- MONGO_ENV existe: ${!!process.env.MONGO_ENV}`);
-console.log(`- PORT: ${process.env.PORT}`);
+// LOG MÍNIMO: Apenas o essencial para não bloquear startup
+console.log("🚀 INICIANDO APLICAÇÃO");
 
 const express = require('express');
 const cors = require('cors');
@@ -68,14 +60,7 @@ const fetch = require('node-fetch');
 const envPath = require('path').join(__dirname, 'env');
 require('dotenv').config({ path: envPath });
 
-// Log para debug - verificar se env foi carregado
-if (process.env.MONGO_ENV) {
-  console.log('✅ Arquivo env carregado - MONGO_ENV encontrado');
-  console.log('🔍 MONGO_ENV (primeiros 50 chars):', process.env.MONGO_ENV.substring(0, 50) + '...');
-} else {
-  console.warn('⚠️ Arquivo env não encontrado ou MONGO_ENV não definido');
-  console.warn('⚠️ Verifique se backend/env existe e contém MONGO_ENV');
-}
+// Log mínimo - será feito após servidor iniciar
 
 // Importar serviços do chatbot
 // VERSION: v2.19.0 | DATE: 2025-01-10 | AUTHOR: VeloHub Development Team
@@ -222,17 +207,8 @@ const formatArticleContent = (content) => {
     .trim();
 };
 
-// MongoDB Connection
+// MongoDB Connection - será inicializado após servidor iniciar
 const uri = process.env.MONGO_ENV;
-
-console.log('🔍 Verificando configuração MongoDB...');
-console.log('🔍 MONGO_ENV definida:', !!uri);
-if (uri) {
-  console.log('🔍 MONGO_ENV (primeiros 50 chars):', uri.substring(0, 50) + '...');
-} else {
-  console.warn('⚠️ MONGO_ENV não configurada - servidor iniciará sem MongoDB');
-  console.warn('⚠️ APIs que dependem do MongoDB não funcionarão');
-}
 const client = uri ? new MongoClient(uri, {
   serverSelectionTimeoutMS: 15000, // 15 segundos timeout (otimizado para us-east-1)
   connectTimeoutMS: 20000, // 20 segundos timeout
