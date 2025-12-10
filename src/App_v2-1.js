@@ -1112,17 +1112,20 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   
   // 2c. Remover tags <img> que não têm src válido ou têm apenas atributos (imagens coladas no meio do texto)
   // Isso captura casos como: <img alt="" width="590" style="..." />
-  processedHtml = processedHtml.replace(/<img[^>]*(?:src=["'][^"']*["'])?[^>]*>/gi, (match) => {
+  // IMPORTANTE: Esta regex deve ser executada DEPOIS das outras remoções de <img> para capturar casos que escaparam
+  processedHtml = processedHtml.replace(/<img[^>]*>/gi, (match) => {
     // Se a tag não tem src ou o src não é uma URL válida de imagem, remover completamente
     const hasValidSrc = /src=["'](https?:\/\/[^"']+\.(jpg|jpeg|png|gif|webp|svg)|data:image\/[^"']+)/i.test(match);
     if (!hasValidSrc) {
-      return ''; // Remover tag sem src válido
+      // Remover tag sem src válido (imagens coladas no meio do texto)
+      return '';
     }
     // Se tem src válido mas é do bucket/Cloud Run, também remover (será renderizada separadamente)
     if (match.includes('storage.googleapis.com') || match.includes('.run.app/api/images/')) {
       return '';
     }
-    return match; // Manter imagens externas válidas
+    // Manter imagens externas válidas (não do bucket/Cloud Run)
+    return match;
   });
   
   // 3. Remover URLs do bucket em texto simples (NÃO substituir, apenas remover)
