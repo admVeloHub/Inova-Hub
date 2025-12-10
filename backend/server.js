@@ -2542,9 +2542,12 @@ const server = app.listen(PORT, '0.0.0.0', (error) => {
   console.log(`📡 Teste a API em: http://localhost:${PORT}/api/test`);
   
   // Tentar conectar ao MongoDB em background (não bloqueia o startup)
-  connectToMongo().catch(error => {
-    console.warn('⚠️ MongoDB: Falha na conexão inicial, tentando reconectar...', error.message);
-  });
+  // IMPORTANTE: Delay para não bloquear startup no Cloud Run
+  setTimeout(() => {
+    connectToMongo().catch(error => {
+      console.warn('⚠️ MongoDB: Falha na conexão inicial, tentando reconectar...', error.message);
+    });
+  }, 500); // Delay reduzido para 500ms
   
   // Inicializar cache de status dos módulos
   setTimeout(async () => {
