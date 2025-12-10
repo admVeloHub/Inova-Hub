@@ -3331,7 +3331,7 @@ const ArtigosPage = () => {
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState('Todas');
     const [categories, setCategories] = useState([]);
-    const [expandedArticleId, setExpandedArticleId] = useState(null); // ID do artigo expandido ao invés de objeto completo
+    const [selectedArticle, setSelectedArticle] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [expandedImage, setExpandedImage] = useState(null);
@@ -3460,13 +3460,7 @@ const ArtigosPage = () => {
     };
 
     const handleArticleClick = (article) => {
-        // Toggle: se já está expandido, fecha; senão, expande
-        const articleId = article._id || article.id;
-        if (expandedArticleId === articleId) {
-            setExpandedArticleId(null);
-        } else {
-            setExpandedArticleId(articleId);
-        }
+        setSelectedArticle(article);
     };
 
     return (
@@ -3582,13 +3576,9 @@ const ArtigosPage = () => {
                         <>
                             {filteredArticles.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2" style={{gap: '25px'}}>
-                                    {filteredArticles.map(article => {
-                                        const articleId = article._id || article.id;
-                                        const isExpanded = expandedArticleId === articleId;
-                                        
-                                        return (
+                                    {filteredArticles.map(article => (
                                          <div 
-                                             key={articleId} 
+                                             key={article._id || article.id} 
                                              className="rounded-lg shadow-md p-6 cursor-pointer velohub-card"
                                              style={{
                                                  borderRadius: '16px',
@@ -3598,8 +3588,7 @@ const ArtigosPage = () => {
                                                  position: 'relative',
                                                  overflow: 'hidden',
                                                  width: '100%',
-                                                 height: 'auto',
-                                                 marginBottom: '25px'
+                                                 height: 'auto'
                                              }}
                                              onMouseEnter={(e) => {
                                                  e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.15)';
@@ -3671,82 +3660,21 @@ const ArtigosPage = () => {
                                                     </div>
                                                 </div>
                                             )}
-                                            {article.content && !isExpanded && (
+                                            {article.content && (
                                                  <div 
                                                      className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 prose prose-sm dark:prose-invert max-w-none"
                                                      dangerouslySetInnerHTML={{ __html: processContentHtml(formatArticleContent(article.content, 200), article?.media?.images || []) }}
                                                  />
                                             )}
-                                            
-                                            {/* Conteúdo expandido */}
-                                            {isExpanded && (
-                                                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                                    {/* Renderizar todas as imagens */}
-                                                    {(() => {
-                                                        const allImages = getAllImages(article);
-                                                        return allImages.length > 0 && (
-                                                            <div className="mb-6 space-y-3">
-                                                                {allImages.map((imgUrl, idx) => {
-                                                                    if (!imgUrl) return null;
-                                                                    return (
-                                                                        <div key={idx} className="relative">
-                                                                            <img 
-                                                                                src={imgUrl} 
-                                                                                alt={`${article.title || article.titulo} - Imagem ${idx + 1}`}
-                                                                                className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                                                                style={{ maxHeight: '400px', objectFit: 'contain' }}
-                                                                                onClick={() => setExpandedImage(imgUrl)}
-                                                                                onError={(e) => {
-                                                                                    e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Crect width="400" height="200" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-family="Arial" font-size="14"%3EImagem não encontrada%3C/text%3E%3C/svg%3E';
-                                                                                }}
-                                                                            />
-                                                                            <div className="text-center mt-2 text-sm text-gray-500 dark:text-gray-400">
-                                                                                Clique para expandir
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                    
-                                                    {/* Renderizar conteúdo completo */}
-                                                    {article._id && article._id.startsWith('artigo-') ? (
-                                                        <div 
-                                                            className="artigo-html-content prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
-                                                            dangerouslySetInnerHTML={{ __html: processContentHtml(article.content, article?.media?.images || []) }}
-                                                        />
-                                                    ) : (
-                                                        <div 
-                                                            className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
-                                                            dangerouslySetInnerHTML={{ __html: processContentHtml(formatResponseText(article.content, 'article'), article?.media?.images || []) }}
-                                                        />
-                                                    )}
-                                                </div>
-                                            )}
-                                            
                                             {article.tag && (
-                                                <div className="flex flex-wrap gap-2 mt-4">
+                                                <div className="flex flex-wrap gap-2">
                                                     <span className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full text-xs">
                                                         {article.tag}
                                                     </span>
                                                 </div>
                                             )}
-                                            
-                                            {/* Botão para expandir/colapsar */}
-                                            <div className="mt-4 text-center">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleArticleClick(article);
-                                                    }}
-                                                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"
-                                                >
-                                                    {isExpanded ? '▼ Recolher' : '▶ Ver mais'}
-                                                </button>
-                                            </div>
                                         </div>
-                                    )})}
+                                    ))}
                                 </div>
                             ) : (
                                 <div className="text-center py-12">
@@ -3760,6 +3688,105 @@ const ArtigosPage = () => {
                 </div>
             </div>
 
+            {/* Modal do Artigo - Para artigos HTML ocupa a tela inteira */}
+            {selectedArticle && (
+                <div 
+                    className={`fixed inset-0 ${selectedArticle._id && selectedArticle._id.startsWith('artigo-') ? 'bg-white dark:bg-gray-900' : 'bg-black bg-opacity-80'} flex items-center justify-center z-[9999] p-4`} 
+                    style={{ zIndex: 9999 }}
+                    onClick={() => !selectedArticle._id?.startsWith('artigo-') && setSelectedArticle(null)}
+                >
+                    <div 
+                        className={`${selectedArticle._id && selectedArticle._id.startsWith('artigo-') ? 'w-full h-full' : 'rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh]'} overflow-hidden bg-white dark:bg-gray-800`} 
+                        style={{
+                            borderRadius: selectedArticle._id?.startsWith('artigo-') ? '0' : '12px', 
+                            boxShadow: selectedArticle._id?.startsWith('artigo-') ? 'none' : '0 4px 20px rgba(0, 0, 0, 0.3)', 
+                            zIndex: 10000
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div>
+                                <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full text-sm font-medium">
+                                    {selectedArticle.category}
+                                </span>
+                                {selectedArticle.createdAt && (
+                                    <span className="ml-3 text-sm text-gray-500 dark:text-gray-400">
+                                        {new Date(selectedArticle.createdAt).toLocaleDateString('pt-BR')}
+                                    </span>
+                                )}
+                            </div>
+                            <button 
+                                onClick={() => setSelectedArticle(null)}
+                                className="text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white text-2xl font-bold"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        
+                        <div className={`p-6 overflow-y-auto ${selectedArticle._id && selectedArticle._id.startsWith('artigo-') ? 'h-[calc(100vh-120px)]' : 'max-h-[calc(90vh-120px)]'}`}>
+                            <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">
+                                {selectedArticle.title}
+                            </h2>
+                            
+                            {/* Renderizar todas as imagens */}
+                            {(() => {
+                                const allImages = getAllImages(selectedArticle);
+                                return allImages.length > 0 && (
+                                    <div className="mb-6 space-y-3">
+                                        {allImages.map((imgUrl, idx) => {
+                                            if (!imgUrl) return null;
+                                            return (
+                                                <div key={idx} className="relative">
+                                                    <img 
+                                                        src={imgUrl} 
+                                                        alt={`${selectedArticle.title || selectedArticle.titulo} - Imagem ${idx + 1}`}
+                                                        className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                                        style={{ maxHeight: '400px', objectFit: 'contain' }}
+                                                        onClick={() => setExpandedImage(imgUrl)}
+                                                        onError={(e) => {
+                                                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Crect width="400" height="200" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-family="Arial" font-size="14"%3EImagem não encontrada%3C/text%3E%3C/svg%3E';
+                                                        }}
+                                                    />
+                                                    <div className="text-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                                        Clique para expandir
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })()}
+                            
+                            {/* Renderizar conteúdo do artigo */}
+                            {selectedArticle._id && selectedArticle._id.startsWith('artigo-') ? (
+                                // Para artigos HTML, processar HTML mas remover tags <img> (seguindo padrão Velonews)
+                                // O conteúdo já vem com a div .artigo-html-content dentro
+                                // As imagens são renderizadas separadamente via getAllImages()
+                                <div 
+                                    dangerouslySetInnerHTML={{ __html: processContentHtml(selectedArticle.content, selectedArticle?.media?.images || []) }}
+                                />
+                            ) : (
+                                // Para artigos da API, usar processamento normal
+                                <div 
+                                    className="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
+                                    dangerouslySetInnerHTML={{ __html: processContentHtml(formatResponseText(selectedArticle.content, 'article'), selectedArticle?.media?.images || []) }}
+                                />
+                            )}
+                            
+                            {selectedArticle.tag && (
+                                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                                    <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Tag:</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full text-sm">
+                                            {selectedArticle.tag}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
             
             {/* Modal de imagem expandida */}
             {expandedImage && (
