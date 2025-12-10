@@ -466,16 +466,40 @@ app.get('/api/data', async (req, res) => {
         };
       }),
       
-      articles: artigos.map(item => ({
-        _id: item._id,
-        title: item.artigo_titulo,
-        content: parseTextContent(item.artigo_conteudo || ''),
-        category: item.categoria_titulo,
-        category_id: item.categoria_id,
-        tag: item.tag,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt
-      })),
+      articles: artigos.map(item => {
+        // Processar campo media conforme novo schema (igual ao velonews)
+        // Suporta formato novo (media: { images: [], videos: [] }) e formato antigo (images: [], videos: []) para compatibilidade
+        let media = {
+          images: [],
+          videos: []
+        };
+
+        if (item.media && typeof item.media === 'object') {
+          // Formato novo: media: { images: [], videos: [] }
+          media.images = Array.isArray(item.media.images) ? item.media.images : [];
+          media.videos = Array.isArray(item.media.videos) ? item.media.videos : [];
+        } else {
+          // Formato antigo: images: [], videos: [] (compatibilidade)
+          if (Array.isArray(item.images)) {
+            media.images = item.images;
+          }
+          if (Array.isArray(item.videos)) {
+            media.videos = item.videos;
+          }
+        }
+
+        return {
+          _id: item._id,
+          title: item.artigo_titulo,
+          content: parseTextContent(item.artigo_conteudo || ''),
+          category: item.categoria_titulo,
+          category_id: item.categoria_id,
+          tag: item.tag,
+          media: media, // ✅ Campo media com images e videos
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt
+        };
+      }),
       
       faq: faq.map(item => ({
         _id: item._id,
@@ -639,11 +663,31 @@ app.get('/api/articles', async (req, res) => {
     
     const articles = await collection.find({}).toArray();
     
-    const mappedArticles = articles.map(item => ({
-      _id: item._id,
-      title: item.artigo_titulo,
-      content: parseTextContent(item.artigo_conteudo || ''),
-      category: item.categoria_titulo,
+    const mappedArticles = articles.map(item => {
+      // Processar campo media conforme novo schema
+      let media = {
+        images: [],
+        videos: []
+      };
+
+      if (item.media && typeof item.media === 'object') {
+        media.images = Array.isArray(item.media.images) ? item.media.images : [];
+        media.videos = Array.isArray(item.media.videos) ? item.media.videos : [];
+      } else {
+        if (Array.isArray(item.images)) {
+          media.images = item.images;
+        }
+        if (Array.isArray(item.videos)) {
+          media.videos = item.videos;
+        }
+      }
+
+      return {
+        _id: item._id,
+        title: item.artigo_titulo,
+        content: parseTextContent(item.artigo_conteudo || ''),
+        category: item.categoria_titulo,
+        media: media, // ✅ Campo media com images e videos
       category_id: item.categoria_id,
       tag: item.tag,
       createdAt: item.createdAt,
