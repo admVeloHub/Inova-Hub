@@ -925,8 +925,8 @@ const applyOptimizedFilter = async (question) => {
         ]);
         
         // Atualizar cache
-        dataCache.updateBotPerguntas(botPerguntasData);
-        dataCache.updateArticles(articlesData);
+        dataCache?.updateBotPerguntas?.(botPerguntasData);
+        dataCache?.updateArticles?.(articlesData);
         
         console.log(`📦 PONTO 1: Cache atualizado - Bot_perguntas: ${botPerguntasData.length}, Artigos: ${articlesData.length}`);
       } else {
@@ -1288,8 +1288,8 @@ app.get('/api/chatbot/init', async (req, res) => {
         ]);
         
         // Atualizar cache
-        dataCache.updateBotPerguntas(botPerguntasData);
-        dataCache.updateArticles(articlesData);
+        dataCache?.updateBotPerguntas?.(botPerguntasData);
+        dataCache?.updateArticles?.(articlesData);
         
         console.log(`✅ VeloBot Init: Cache atualizado - Bot_perguntas: ${botPerguntasData.length}, Artigos: ${articlesData.length}`);
       } else {
@@ -1343,7 +1343,7 @@ app.get('/api/chatbot/init', async (req, res) => {
       },
       cacheStatus: {
         botPerguntas: dataCache?.getBotPerguntasData?.()?.length || 0,
-        articles: dataCache.getArticlesData()?.length || 0
+        articles: dataCache?.getArticlesData?.()?.length || 0
       },
       message: 'VeloBot inicializado - memória de conversa ativa por 10 minutos',
       timestamp: new Date().toISOString()
@@ -1384,13 +1384,13 @@ app.post('/api/chatbot/clarification', async (req, res) => {
     console.log(`🔍 Clarification Direto: Buscando resposta para "${cleanQuestion}"`);
     
     // 1. BUSCAR RESPOSTA DIRETA NO CACHE
-    let botPerguntasData = dataCache.getBotPerguntasData();
+    let botPerguntasData = dataCache?.getBotPerguntasData?.() || [];
     
     // Se cache inválido, carregar do MongoDB
     if (!botPerguntasData) {
       console.log('⚠️ Clarification Direto: Cache inválido, carregando do MongoDB...');
       botPerguntasData = await getBotPerguntasData();
-      dataCache.updateBotPerguntas(botPerguntasData);
+      dataCache?.updateBotPerguntas?.(botPerguntasData);
     }
     const directMatch = botPerguntasData.find(item => 
       item.pergunta && item.pergunta.toLowerCase().includes(cleanQuestion.toLowerCase())
@@ -1403,11 +1403,11 @@ app.post('/api/chatbot/clarification', async (req, res) => {
       await userActivityLogger.logQuestion(cleanUserId, cleanQuestion, cleanSessionId);
       
       // 3. BUSCAR ARTIGOS RELACIONADOS
-      let articlesData = dataCache.getArticlesData();
+      let articlesData = dataCache?.getArticlesData?.() || [];
       if (!articlesData) {
         console.log('⚠️ Clarification Direto: Cache de artigos inválido, carregando do MongoDB...');
         articlesData = await getArticlesData();
-        dataCache.updateArticles(articlesData);
+        dataCache?.updateArticles?.(articlesData);
       }
       
       // Filtrar artigos por palavras-chave da pergunta
@@ -1444,10 +1444,10 @@ app.post('/api/chatbot/clarification', async (req, res) => {
     
     if (searchResults.botPergunta) {
       // Buscar artigos relacionados também no fallback
-      let articlesData = dataCache.getArticlesData();
+      let articlesData = dataCache?.getArticlesData?.() || [];
       if (!articlesData) {
         articlesData = await getArticlesData();
-        dataCache.updateArticles(articlesData);
+        dataCache?.updateArticles?.(articlesData);
       }
       
       const filteredArticles = filterByKeywords(cleanQuestion, articlesData);
@@ -1538,7 +1538,7 @@ app.post('/api/chatbot/clear-cache', async (req, res) => {
  */
 app.get('/api/chatbot/cache-status', async (req, res) => {
   try {
-    const cacheStatus = dataCache.getCacheStatus();
+    const cacheStatus = dataCache?.getCacheStatus?.() || {};
     
     res.json({
       success: true,
