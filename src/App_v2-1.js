@@ -1265,6 +1265,23 @@ const processContentHtml = (htmlContent, mediaImages = []) => {
   // Exemplo: "?úo" → "ção", "?é" → "é"
   processedHtml = processedHtml.replace(/\?([úíóãêõçáéôàèìòùÚÍÓÃÊÕÇÁÉÔÀÈÌÒÙ])/g, '$1');
   
+  // 20. Remover atributos HTML soltos que possam ter sobrado de tags <img> quebradas
+  // Exemplo: alt="" width="590" style="width: 590px; height: auto; max-width: 100%; display: block; margin: 10px 0; border-radius: 8px;" />
+  processedHtml = processedHtml.replace(/alt=["'][^"']*["']\s+width=["'][^"']*["']\s+style=["'][^"']*["']\s*\/?>/gi, '');
+  processedHtml = processedHtml.replace(/width=["'][^"']*["']\s+style=["'][^"']*["']\s*\/?>/gi, '');
+  processedHtml = processedHtml.replace(/style=["'][^"']*["']\s*\/?>/gi, '');
+  processedHtml = processedHtml.replace(/alt=["'][^"']*["']\s*\/?>/gi, '');
+  processedHtml = processedHtml.replace(/width=["'][^"']*["']\s*\/?>/gi, '');
+  processedHtml = processedHtml.replace(/\/>/g, ''); // Remover fechamentos de tag soltos
+  
+  // 21. Preservar formatação de texto (negrito, itálico, etc.)
+  // As tags <strong>, <b>, <em>, <i> devem ser preservadas
+  // Não fazer nada aqui - elas já são preservadas por padrão no dangerouslySetInnerHTML
+  
+  // 22. Desescapar HTML entities para tags de formatação
+  processedHtml = processedHtml.replace(/&lt;(strong|b|em|i|u|p|br|h[1-6]|ul|ol|li|div|span)&gt;/gi, '<$1>');
+  processedHtml = processedHtml.replace(/&lt;\/(strong|b|em|i|u|p|br|h[1-6]|ul|ol|li|div|span)&gt;/gi, '</$1>');
+  
   console.log('🔍 processContentHtml - DEPOIS:', processedHtml.substring(0, 200));
   
   return processedHtml;
