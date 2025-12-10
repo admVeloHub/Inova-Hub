@@ -2530,14 +2530,11 @@ app.get('/api/velo-news/acknowledgments/:userEmail', async (req, res) => {
   }
 });
 
-// Iniciar servidor
-console.log('🔄 Iniciando servidor...');
-console.log(`📍 Porta configurada: ${PORT}`);
+// Iniciar servidor IMEDIATAMENTE (sem operações síncronas que possam bloquear)
+// IMPORTANTE: Cloud Run precisa que o servidor escute na porta dentro do timeout
+console.log('🚀 INICIANDO SERVIDOR IMEDIATAMENTE...');
+console.log(`📍 Porta: ${PORT}`);
 console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-console.log(`📁 Diretório de trabalho: ${process.cwd()}`);
-console.log(`📁 Arquivos no diretório:`, require('fs').readdirSync('.'));
-
-console.log('🚀 Tentando iniciar servidor na porta', PORT);
 
 const server = app.listen(PORT, '0.0.0.0', (error) => {
   if (error) {
