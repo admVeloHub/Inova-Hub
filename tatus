@@ -1,0 +1,252 @@
+[1mdiff --git a/backend/server.js b/backend/server.js[m
+[1mindex f189975..015ca79 100644[m
+[1m--- a/backend/server.js[m
+[1m+++ b/backend/server.js[m
+[36m@@ -788,7 +788,9 @@[m [mapp.delete('/api/velo-news/:id', async (req, res) => {[m
+ const youtubeCache = {[m
+   data: null,[m
+   timestamp: null,[m
+[31m-  ttl: 30 * 60 * 1000 // 30 minutos[m
+[32m+[m[32m  ttl: 60 * 60 * 1000, // 1 hora (aumentado para reduzir requisições)[m
+[32m+[m[32m  lastRequestTime: null,[m
+[32m+[m[32m  minRequestInterval: 5 * 60 * 1000 // Mínimo de 5 minutos entre requisições reais[m
+ };[m
+ [m
+ // GET /api/feed/youtube - Buscar vídeos do canal YouTube[m
+[36m@@ -796,11 +798,28 @@[m [mapp.get('/api/feed/youtube', async (req, res) => {[m
+   try {[m
+     console.log('📹 [YOUTUBE FEED] Requisição recebida');[m
+     [m
+[31m-    // Verificar cache[m
+[31m-    if (youtubeCache.data && youtubeCache.timestamp && (Date.now() - youtubeCache.timestamp) < youtubeCache.ttl) {[m
+[31m-      console.log('📹 [YOUTUBE FEED] Retornando dados do cache');[m
+[31m-      return res.json({ success: true, data: youtubeCache.data, cached: true });[m
+[32m+[m[32m    // Verificar cache (TTL de 1 hora)[m
+[32m+[m[32m    const cacheAge = youtubeCache.timestamp ? (Date.now() - youtubeCache.timestamp) : Infinity;[m
+[32m+[m[32m    if (youtubeCache.data && cacheAge < youtubeCache.ttl) {[m
+[32m+[m[32m      console.log(`📹 [YOUTUBE FEED] Retornando dados do cache (idade: ${Math.round(cacheAge / 1000 / 60)} minutos)`);[m
+[32m+[m[32m      return res.json({ success: true, data: youtubeCache.data, cached: true, cacheAge: Math.round(cacheAge / 1000) });[m
+     }[m
+[32m+[m[41m    [m
+[32m+[m[32m    // Proteção: evitar requisições muito frequentes mesmo se cache expirou[m
+[32m+[m[32m    const timeSinceLastRequest = youtubeCache.lastRequestTime ? (Date.now() - youtubeCache.lastRequestTime) : Infinity;[m
+[32m+[m[32m    if (timeSinceLastRequest < youtubeCache.minRequestInterval && youtubeCache.data) {[m
+[32m+[m[32m      console.log(`⚠️ [YOUTUBE FEED] Muitas requisições! Retornando cache antigo (última requisição há ${Math.round(timeSinceLastRequest / 1000)} segundos)`);[m
+[32m+[m[32m      return res.json({[m[41m [m
+[32m+[m[32m        success: true,[m[41m [m
+[32m+[m[32m        data: youtubeCache.data,[m[41m [m
+[32m+[m[32m        cached: true,[m[41m [m
+[32m+[m[32m        warning: 'Cache antigo retornado para evitar quota excedida',[m
+[32m+[m[32m        cacheAge: Math.round(cacheAge / 1000)[m
+[32m+[m[32m      });[m
+[32m+[m[32m    }[m
+[32m+[m[41m    [m
+[32m+[m[32m    // Marcar tempo da requisição[m
+[32m+[m[32m    youtubeCache.lastRequestTime = Date.now();[m
+     const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || config.YOUTUBE_API_KEY;[m
+     const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || config.YOUTUBE_CHANNEL_ID;[m
+     const YOUTUBE_USERNAME = process.env.YOUTUBE_USERNAME || config.YOUTUBE_USERNAME || '@canalvelotax'; // Username do canal[m
+[36m@@ -1308,10 +1327,11 @@[m [mapp.get('/api/feed/youtube/oauth/debug', async (req, res) => {[m
+ // POST /api/feed/youtube/like - Dar like em vídeo do YouTube (OFICIAL)[m
+ app.post('/api/feed/youtube/like', async (req, res) => {[m
+   try {[m
+[32m+[m[32m    console.log('👍 [YOUTUBE LIKE] Requisição recebida:', req.body);[m
+     const { videoId, userId } = req.body;[m
+[31m-    const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;[m
+ [m
+     if (!videoId) {[m
+[32m+[m[32m      console.warn('⚠️ [YOUTUBE LIKE] videoId não fornecido');[m
+       return res.status(400).json({[m
+         success: false,[m
+         message: 'videoId é obrigatório'[m
+[36m@@ -1319,47 +1339,75 @@[m [mapp.post('/api/feed/youtube/like', async (req, res) => {[m
+     }[m
+ [m
+     if (!userId) {[m
+[32m+[m[32m      console.warn('⚠️ [YOUTUBE LIKE] userId não fornecido');[m
+       return res.status(400).json({[m
+         success: false,[m
+         message: 'userId é obrigatório. Faça login primeiro.',[m
+         requiresAuth: true[m
+       });[m
+     }[m
+[32m+[m[41m    [m
+[32m+[m[32m    console.log(`👍 [YOUTUBE LIKE] Tentando dar like no vídeo ${videoId} para usuário ${userId}`);[m
+ [m
+     // Verificar se usuário está autenticado[m
+     const userToken = userTokens.get(userId);[m
+     [m
+[32m+[m[32m    console.log(`🔍 [YOUTUBE LIKE] Status do token para usuário ${userId}:`, {[m
+[32m+[m[32m      hasToken: !!userToken,[m
+[32m+[m[32m      isExpired: userToken ? (userToken.expiry <= Date.now()) : true,[m
+[32m+[m[32m      expiry: userToken?.expiry ? new Date(userToken.expiry).toISOString() : 'N/A',[m
+[32m+[m[32m      now: new Date().toISOString()[m
+[32m+[m[32m    });[m
+[32m+[m[41m    [m
+     if (!userToken || userToken.expiry <= Date.now()) {[m
+       // Token expirado ou não existe - precisa reautenticar[m
+[32m+[m[32m      const baseUrl = config.INOVA_HUB_API_URL || process.env.INOVA_HUB_API_URL || 'http://localhost:8090';[m
+[32m+[m[32m      const authUrl = `${baseUrl}/api/feed/youtube/oauth?userId=${userId}`;[m
+[32m+[m[32m      console.warn(`⚠️ [YOUTUBE LIKE] Usuário ${userId} não autenticado. URL de auth: ${authUrl}`);[m
+       return res.status(401).json({[m
+         success: false,[m
+         message: 'Autenticação necessária. Por favor, autorize o acesso ao YouTube.',[m
+         requiresAuth: true,[m
+[31m-        authUrl: `${config.INOVA_HUB_API_URL || 'http://localhost:8090'}/api/feed/youtube/oauth?userId=${userId}`[m
+[32m+[m[32m        authUrl: authUrl[m
+       });[m
+     }[m
+ [m
+     // Configurar OAuth2 com token do usuário[m
+[31m-    const oauth2Client = getOAuth2Client();[m
+[32m+[m[32m    let oauth2Client;[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      oauth2Client = getOAuth2Client();[m
+[32m+[m[32m      console.log('🔧 [YOUTUBE LIKE] OAuth2 client criado com sucesso');[m
+[32m+[m[32m    } catch (error) {[m
+[32m+[m[32m      console.error('❌ [YOUTUBE LIKE] Erro ao criar OAuth2 client:', error);[m
+[32m+[m[32m      return res.status(500).json({[m
+[32m+[m[32m        success: false,[m
+[32m+[m[32m        message: 'Erro ao configurar autenticação OAuth',[m
+[32m+[m[32m        error: error.message[m
+[32m+[m[32m      });[m
+[32m+[m[32m    }[m
+[32m+[m[41m    [m
+     oauth2Client.setCredentials({[m
+       access_token: userToken.accessToken,[m
+       refresh_token: userToken.refreshToken[m
+     });[m
+[32m+[m[32m    console.log('🔧 [YOUTUBE LIKE] Credenciais OAuth2 configuradas');[m
+ [m
+     // Criar cliente do YouTube[m
+     const youtube = google.youtube({[m
+       version: 'v3',[m
+       auth: oauth2Client[m
+     });[m
+[32m+[m[32m    console.log('🔧 [YOUTUBE LIKE] Cliente YouTube criado');[m
+ [m
+     // Dar like no vídeo[m
+     try {[m
+[32m+[m[32m      console.log(`👍 [YOUTUBE LIKE] Chamando API do YouTube para dar like no vídeo ${videoId}`);[m
+       await youtube.videos.rate({[m
+         id: videoId,[m
+         rating: 'like'[m
+       });[m
+ [m
+[31m-      console.log(`👍 Like oficial registrado no YouTube para vídeo: ${videoId} pelo usuário: ${userId}`);[m
+[32m+[m[32m      console.log(`✅ [YOUTUBE LIKE] Like oficial registrado no YouTube para vídeo: ${videoId} pelo usuário: ${userId}`);[m
+ [m
+       res.json({[m
+         success: true,[m
+[36m@@ -1407,24 +1455,60 @@[m [mapp.post('/api/feed/youtube/like', async (req, res) => {[m
+             videoId: videoId[m
+           });[m
+         } catch (refreshError) {[m
+[31m-          console.error('❌ Erro ao renovar token:', refreshError);[m
+[32m+[m[32m          console.error('❌ [YOUTUBE LIKE] Erro ao renovar token:', refreshError);[m
+[32m+[m[32m          console.error('❌ [YOUTUBE LIKE] Detalhes do erro:', {[m
+[32m+[m[32m            code: refreshError.code,[m
+[32m+[m[32m            message: refreshError.message,[m
+[32m+[m[32m            response: refreshError.response?.data[m
+[32m+[m[32m          });[m
+[32m+[m[32m          const baseUrl = config.INOVA_HUB_API_URL || process.env.INOVA_HUB_API_URL || 'http://localhost:8090';[m
+           return res.status(401).json({[m
+             success: false,[m
+             message: 'Token expirado. Por favor, reautorize o acesso.',[m
+             requiresAuth: true,[m
+[31m-            authUrl: `${config.INOVA_HUB_API_URL || 'http://localhost:8090'}/api/feed/youtube/oauth?userId=${userId}`[m
+[32m+[m[32m            authUrl: `${baseUrl}/api/feed/youtube/oauth?userId=${userId}`[m
+           });[m
+         }[m
+       } else {[m
+[32m+[m[32m        // Outro erro da API do YouTube[m
+[32m+[m[32m        console.error('❌ [YOUTUBE LIKE] Erro da API do YouTube:', {[m
+[32m+[m[32m          code: youtubeError.code,[m
+[32m+[m[32m          message: youtubeError.message,[m
+[32m+[m[32m          response: youtubeError.response?.data,[m
+[32m+[m[32m          errors: youtubeError.errors[m
+[32m+[m[32m        });[m
+         throw youtubeError;[m
+       }[m
+[32m+[m[32m    } catch (rateError) {[m
+[32m+[m[32m      // Erro específico ao dar like[m
+[32m+[m[32m      console.error('❌ [YOUTUBE LIKE] Erro ao executar rate:', rateError);[m
+[32m+[m[32m      console.error('❌ [YOUTUBE LIKE] Detalhes:', {[m
+[32m+[m[32m        code: rateError.code,[m
+[32m+[m[32m        message: rateError.message,[m
+[32m+[m[32m        response: rateError.response?.data[m
+[32m+[m[32m      });[m
+[32m+[m[41m      [m
+[32m+[m[32m      // Se for erro de permissão, pedir reautenticação[m
+[32m+[m[32m      if (rateError.code === 403 || rateError.code === 401) {[m
+[32m+[m[32m        const baseUrl = config.INOVA_HUB_API_URL || process.env.INOVA_HUB_API_URL || 'http://localhost:8090';[m
+[32m+[m[32m        return res.status(401).json({[m
+[32m+[m[32m          success: false,[m
+[32m+[m[32m          message: 'Permissão negada. Por favor, reautorize o acesso ao YouTube.',[m
+[32m+[m[32m          requiresAuth: true,[m
+[32m+[m[32m          authUrl: `${baseUrl}/api/feed/youtube/oauth?userId=${userId}`[m
+[32m+[m[32m        });[m
+[32m+[m[32m      }[m
+[32m+[m[41m      [m
+[32m+[m[32m      throw rateError;[m
+     }[m
+   } catch (error) {[m
+[31m-    console.error('❌ Erro ao dar like no YouTube:', error);[m
+[32m+[m[32m    console.error('❌ [YOUTUBE LIKE] Erro geral ao dar like no YouTube:', error);[m
+[32m+[m[32m    console.error('❌ [YOUTUBE LIKE] Stack:', error.stack);[m
+     res.status(500).json({[m
+       success: false,[m
+       message: 'Erro ao dar like no YouTube',[m
+[31m-      error: error.message[m
+[32m+[m[32m      error: error.message,[m
+[32m+[m[32m      details: error.response?.data || error.errors[m
+     });[m
+   }[m
+ });[m
+[1mdiff --git a/src/pages/FeedPage.js b/src/pages/FeedPage.js[m
+[1mindex ef533e6..c4fce47 100644[m
+[1m--- a/src/pages/FeedPage.js[m
+[1m+++ b/src/pages/FeedPage.js[m
+[36m@@ -142,6 +142,7 @@[m [mconst FeedPage = () => {[m
+     }[m
+ [m
+     try {[m
+[32m+[m[32m      console.log('👍 [FRONTEND] Enviando like para vídeo:', videoId, 'usuário:', session.user.email);[m
+       const response = await fetch(`${API_BASE_URL}/feed/youtube/like`, {[m
+         method: 'POST',[m
+         headers: { 'Content-Type': 'application/json' },[m
+[36m@@ -152,25 +153,30 @@[m [mconst FeedPage = () => {[m
+       });[m
+ [m
+       const result = await response.json();[m
+[32m+[m[32m      console.log('👍 [FRONTEND] Resposta do like:', result);[m
+       [m
+       if (result.success) {[m
+         setLikedVideos(prev => new Set(prev).add(videoId));[m
+         // Atualizar status de autenticação[m
+         setIsYouTubeAuthenticated(true);[m
+[32m+[m[32m        // Mostrar feedback positivo[m
+[32m+[m[32m        console.log('✅ Like registrado com sucesso!');[m
+       } else if (result.requiresAuth) {[m
+         // Precisa autenticar[m
+[32m+[m[32m        console.warn('⚠️ Autenticação necessária para dar like');[m
+         setShowAuthPrompt(true);[m
+         if (result.authUrl) {[m
+           // Iniciar autenticação automaticamente[m
+[32m+[m[32m          console.log('🔐 Redirecionando para autenticação:', result.authUrl);[m
+           window.location.href = result.authUrl;[m
+         }[m
+       } else {[m
+[31m-        console.error('Erro ao dar like:', result.message);[m
+[31m-        alert('Erro ao curtir vídeo. Tente novamente.');[m
+[32m+[m[32m        console.error('❌ Erro ao dar like:', result);[m
+[32m+[m[32m        alert(`Erro ao curtir vídeo: ${result.message || 'Erro desconhecido'}`);[m
+       }[m
+     } catch (error) {[m
+[31m-      console.error('Erro ao dar like:', error);[m
+[31m-      alert('Erro ao curtir vídeo. Tente novamente.');[m
+[32m+[m[32m      console.error('❌ Erro ao dar like:', error);[m
+[32m+[m[32m      alert('Erro ao curtir vídeo. Verifique o console para mais detalhes.');[m
+     }[m
+   };[m
+ [m

@@ -1,0 +1,20 @@
+[33m5a4b902[m fix: processa links e remove HTML malformado de imagens
+[33m2246564[m fix: remove tags <img> do HTML seguindo padrão do Velonews
+[33m74e7535[m fix: corrige parsing de HTML e processamento de imagens
+[33m9421317[m fix: corrige renderização duplicada e adiciona estilos faltantes
+[33m1082ff9[m fix: corrige renderização de artigos HTML no modal
+[33m838d227[m feat: adiciona artigos HTML com integração na aba Artigos
+[33m01f6abd[m feat: Reorganização completa da homepage e melhorias na interface
+[33mcec94b3[m fix: Usar mesmo modal da página de artigos no chatbot
+[33md491f31[m fix: Corrigir formatação de respostas do chatbot e artigos
+[33mfe07e3c[m feat: Adicionar módulo Seguro ao sistema de status e corrigir modal de artigos
+[33mad4fb3f[m feat: Implementação completa de formatação consistente
+[33mfb707ea[m feat: Implementação completa do fluxo VeloBot v2.9.1
+[33m1b804b2[m fix: Correção do botão IA e threshold de artigos
+[33m38cd275[m feat: Implementação completa do botão AI e integração com artigos
+[33m01b2dff[m fix: Corrigir nome da collection de artigos no VeloBot - Alterar 'artigos' para 'Artigos' (maiúsculo) - Resolver erro 500 na API /api/chatbot/ask - Manter consistência com APIs básicas - Atualizar versão: backend/server.js v1.0.5
+[33m6670869[m fix: corrigir moldura crítica e sidebar - criar moldura real com gradiente azul ao invés de preenchimento - sidebar Adicionado recentemente agora mostra artigos ao invés de velonews - ajustar cores e layout dos itens do sidebar
+[33m168744e[m  IMPLEMENTADAS CORREÇÕES SUGERIDAS PELAS IAs - Backend: filtros para evitar artigos na collection Velonews - Backend: mapeamento endurecido com source: 'Velonews' - Frontend: filtro de segurança para aceitar apenas source === 'Velonews' - Frontend: logs de sanidade para detectar vazamentos - Corrigido problema de artigos aparecendo no Velonews
+[33mfd0ec62[m  CORRIGIDO: Erro de escopo da variável sortedVeloNews - Movida declaração para fora do bloco if - Agora sortedVeloNews está disponível em todo o escopo - Corrigido problema que causava artigos aparecerem no Velonews
+[33mb4fc11b[m  CORRIGIDO: Removida mistura de artigos e FAQ no Velonews - Seção 'Adicionado Recentemente' agora mostra apenas velonews - Removida busca de articlesAPI.getAll() e faqAPI.getAll() - Corrigida exibição para usar campos corretos (title, content) - Agora apenas dados da collection Velonews são exibidos
+[33m09fd466[m  Adicionados logs detalhados para debug - Backend: mostra estrutura dos documentos da collection Velonews - Frontend: mostra estrutura detalhada dos dados recebidos - Para identificar por que artigos aparecem no Velonews

@@ -1,0 +1,66 @@
+[33mcommit cdf40ccb796516ab04b6b1dd867cbe2c6f0d4557[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: admVeloHub <lucas.gravina@velotax.com.br>
+Date:   Tue Dec 9 16:30:09 2025 -0300
+
+    Correção de status do painel de escalações e atualização do serviço WhatsApp
+    
+    - Alterado mapeamento de status de 'Resolvido'/'Negado' para 'feito'/'não feito' nos endpoints de escalações
+    - Implementado suporte para múltiplas variações de emoji de negação (, , )
+    - Atualizado whatsappService.js para suportar SKYNET (dev) e Render (produção)
+    - Seleção automática de URL e endpoint baseada em ambiente (NODE_ENV)
+    - Adicionados logs de diagnóstico detalhados para troubleshooting
+    - Reorganização de scripts antigos para pasta archive
+    - Limpeza de arquivos temporários e documentação obsoleta
+
+ -tree -r escalacoes --name-only                    |  324 [31m------[m
+ ANALISE_VELONEWS_IMAGEM_VIDEO.md                   |  389 [32m+++++++[m
+ CHECKLIST_MIGRACAO_GCP.md                          | 1063 [31m--------------------[m
+ CONFIGURACAO_CHAVES_API.md                         |  179 [31m----[m
+ CONFIGURAR_CORS_GCS.md                             |  151 [32m+++[m
+ Dockerfile.minimal                                 |   26 [31m-[m
+ PLANO_MELHORIAS_VELONEWS.md                        |  621 [31m------------[m
+ ...ENDA\303\207\303\225ES PRIORIT\303\201RIAS.ini" |  136 [31m---[m
+ SISTEMA_TICKETS_STATUS_ENDPOINTS.md                |  365 [31m-------[m
+ backend/config-local.js                            |    8 [32m+[m[31m-[m
+ backend/config.js                                  |    9 [32m+[m[31m-[m
+ backend/env                                        |   99 [32m++[m
+ backend/env-template-real-data.txt                 |   69 [31m--[m
+ backend/routes/api/escalacoes/erros-bugs.js        |   13 [32m+[m[31m-[m
+ backend/routes/api/escalacoes/solicitacoes.js      |   13 [32m+[m[31m-[m
+ backend/scripts/analyzeDataVolume.js               |    3 [32m+[m[31m-[m
+ backend/scripts/archive/README.md                  |   37 [32m+[m
+ backend/scripts/archive/analyzeDataVolume.js       |  393 [32m++++++++[m
+ .../scripts/{ => archive}/checkExistingIndexes.js  |    0
+ backend/scripts/archive/checkVelonews.js           |  115 [32m+++[m
+ .../scripts/archive/fix-solicitacoes-final.ps1     |    0
+ .../archive/insert_module_status_mongodb.js        |    0
+ .../scripts/{ => archive}/investigateIndexes.js    |    0
+ .../{ => archive}/investigateTitleContent.js       |    0
+ .../archive/mongodb_module_status_example.json     |    0
+ backend/scripts/{ => archive}/runDataAnalysis.js   |    0
+ .../scripts/{ => archive}/testExistingIndexes.js   |    0
+ .../scripts/{ => archive}/testOptimizedFilter.js   |    0
+ backend/scripts/checkVelonews.js                   |    3 [32m+[m[31m-[m
+ backend/server.js                                  |  256 [32m++++[m[31m-[m
+ backend/services/escalacoes/whatsappService.js     |  102 [32m+[m[31m-[m
+ calacoes --no-edit                                 |   33 [31m-[m
+ .../archive/CHECKLIST_ROCKETCHAT_IMPLEMENTACAO.md  |    0
+ docs/archive/README.md                             |   20 [32m+[m
+ .../archive/RELATORIO_DEBUG_FINAL.md               |    0
+ .../archive/diagnostico_cloud_run.md               |    0
+ .../archive/prompt_avaliacao_ias.md                |    0
+ gcs-cors-config.json                               |   16 [32m+[m
+ ... schema de cole\303\247\303\265es do mongoD.rb" |    6 [32m+[m[31m-[m
+ remove-env.bat                                     |   11 [31m-[m
+ rocketchat-compose                                 |    1 [31m-[m
+ src/App_v2-1.js                                    |  812 [32m++++++++++++++[m[31m-[m
+ src/components/Chatbot.js                          |    2 [32m+[m
+ src/components/Escalacoes/FormSolicitacao.js       |   10 [32m+[m[31m-[m
+ src/components/NewsHistoryModal.js                 |   63 [32m+[m[31m-[m
+ src/config/api-config.js                           |    4 [32m+[m[31m-[m
+ start-frontend.ps1                                 |    8 [31m-[m
+ ...303\247as locais antes de recuperar escalacoes" |   52 [31m-[m
+ tatus --short                                      |  324 [31m------[m
+ temp_solicitacoes.js                               |    1 [31m-[m
+ temp_whatsapp_git.js                               |  Bin [31m13686[m -> [32m0[m bytes
+ 51 files changed, 2445 insertions(+), 3292 deletions(-)
