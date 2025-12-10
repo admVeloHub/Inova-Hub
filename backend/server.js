@@ -295,7 +295,7 @@ app.get('/api/test', async (req, res) => {
 app.get('/api/chatbot/test', async (req, res) => {
   try {
     const config = require('./config');
-    const aiStatus = aiService.getConfigurationStatus();
+    const aiStatus = aiService?.getConfigurationStatus?.() || { anyAvailable: false };
     
     res.json({
       success: true,
@@ -821,7 +821,12 @@ app.get('/api/ponto/status', async (req, res) => {
 });
 
 // Iniciar limpeza automática de sessões
-sessionService.startAutoCleanup();
+// Iniciar auto cleanup de sessões (após serviços carregarem)
+setTimeout(() => {
+  if (sessionService?.startAutoCleanup) {
+    sessionService.startAutoCleanup();
+  }
+}, 2000);
 
 /**
  * Filtra perguntas do MongoDB por keywords/sinônimos
@@ -902,8 +907,8 @@ const applyOptimizedFilter = async (question) => {
       console.warn('⚠️ PONTO 1: Erro no filtro com índices, usando fallback:', indexError.message);
       
       // 2. FALLBACK PARA FILTRO MANUAL
-      let botPerguntasData = dataCache.getBotPerguntasData();
-      let articlesData = dataCache.getArticlesData();
+      let botPerguntasData = dataCache?.getBotPerguntasData?.() || [];
+      let articlesData = dataCache?.getArticlesData?.() || [];
       
       // Se cache inválido, carregar do MongoDB
       if (!botPerguntasData || !articlesData) {
@@ -1260,6 +1265,13 @@ app.get('/api/chatbot/init', async (req, res) => {
     console.log(`🚀 VeloBot Init: Inicializando para ${cleanUserId}`);
     
     // 1. VALIDAÇÃO DA SESSÃO (memória de conversa - 10 minutos)
+    if (!sessionService?.getOrCreateSession) {
+      return res.status(503).json({
+        success: false,
+        error: 'Serviço de sessão ainda não está disponível. Tente novamente em alguns segundos.'
+      });
+    }
+    
     const session = sessionService.getOrCreateSession(cleanUserId, null);
     console.log(`✅ VeloBot Init: Sessão criada/obtida: ${session.id}`);
     
@@ -1267,7 +1279,7 @@ app.get('/api/chatbot/init', async (req, res) => {
     console.log('📦 VeloBot Init: Carregando dados MongoDB no cache...');
     try {
       // Verificar se cache precisa ser recarregado
-      if (dataCache.needsReload()) {
+      if (dataCache?.needsReload?.()) {
         console.log('🔄 VeloBot Init: Cache expirado, recarregando do MongoDB...');
         
         const [botPerguntasData, articlesData] = await Promise.all([
@@ -1282,7 +1294,7 @@ app.get('/api/chatbot/init', async (req, res) => {
         console.log(`✅ VeloBot Init: Cache atualizado - Bot_perguntas: ${botPerguntasData.length}, Artigos: ${articlesData.length}`);
       } else {
         console.log('✅ VeloBot Init: Cache válido, usando dados existentes');
-        const cacheStatus = dataCache.getCacheStatus();
+        const cacheStatus = dataCache?.getCacheStatus?.() || {};
         console.log(`📊 VeloBot Init: Cache status - Bot_perguntas: ${cacheStatus.botPerguntas.count} registros, Artigos: ${cacheStatus.articles.count} registros`);
       }
     } catch (error) {
@@ -1290,6 +1302,13 @@ app.get('/api/chatbot/init', async (req, res) => {
     }
     
     // 3. HANDSHAKE INTELIGENTE PARA DETERMINAR IA PRIMÁRIA (OTIMIZADO)
+    if (!aiService?.testConnectionIntelligent) {
+      return res.status(503).json({
+        success: false,
+        error: 'Serviço de IA ainda não está disponível. Tente novamente em alguns segundos.'
+      });
+    }
+    
     const aiStatus = await aiService.testConnectionIntelligent();
     let primaryAI = null;
     let fallbackAI = null;
@@ -1323,7 +1342,7 @@ app.get('/api/chatbot/init', async (req, res) => {
         anyAvailable: aiStatus.openai.available || aiStatus.gemini.available
       },
       cacheStatus: {
-        botPerguntas: dataCache.getBotPerguntasData()?.length || 0,
+        botPerguntas: dataCache?.getBotPerguntasData?.()?.length || 0,
         articles: dataCache.getArticlesData()?.length || 0
       },
       message: 'VeloBot inicializado - memória de conversa ativa por 10 minutos',
