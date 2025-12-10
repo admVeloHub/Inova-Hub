@@ -29,7 +29,7 @@
  * - Mantida compatibilidade com formato antigo (images) e novo (media.images)
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Home, FileText, MessageSquare, LifeBuoy, Book, Search, User, Sun, Moon, FilePlus, Bot, GraduationCap, Map, Puzzle, PlusSquare, Send, ThumbsUp, ThumbsDown, BookOpen, X, RefreshCw } from 'lucide-react';
 import { mainAPI, veloNewsAPI, articlesAPI, faqAPI } from './services/api';
 import { checkAuthenticationState, updateUserInfo, getUserSession, stopHeartbeat } from './services/auth';
@@ -2427,51 +2427,7 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                         <div className="flex-1 overflow-y-auto p-4">
                             {/* Renderizar todas as imagens */}
                             {(() => {
-                                // Processar HTML para extrair URLs de imagens antes de getAllImages
-                                const htmlContent = selectedArticle.content || '';
-                                const existingImages = selectedArticle?.media?.images || [];
-                                
-                                // Extrair URLs de imagens do HTML (incluindo base64)
-                                const extractedUrls = [];
-                                
-                                // Extrair de tags <img>
-                                const imgMatches = htmlContent.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi);
-                                if (imgMatches) {
-                                    imgMatches.forEach(match => {
-                                        const srcMatch = match.match(/src=["']([^"']+)["']/i);
-                                        if (srcMatch && srcMatch[1]) {
-                                            const url = srcMatch[1];
-                                            if ((url.startsWith('http') || url.startsWith('data:image')) && 
-                                                !url.includes('storage.googleapis.com') && 
-                                                !url.includes('.run.app/api/images/')) {
-                                                if (!extractedUrls.includes(url)) {
-                                                    extractedUrls.push(url);
-                                                }
-                                            }
-                                        }
-                                    });
-                                }
-                                
-                                // Extrair URLs base64 soltas
-                                const base64Matches = htmlContent.match(/data:image\/[^;]+;base64,[^\s<>"']+/gi);
-                                if (base64Matches) {
-                                    base64Matches.forEach(url => {
-                                        if (!extractedUrls.includes(url)) {
-                                            extractedUrls.push(url);
-                                        }
-                                    });
-                                }
-                                
-                                // Criar objeto do artigo com URLs extraídas
-                                const articleWithImages = {
-                                    ...selectedArticle,
-                                    media: {
-                                        ...selectedArticle.media,
-                                        images: [...existingImages, ...extractedUrls]
-                                    }
-                                };
-                                
-                                const allImages = getAllImages(articleWithImages);
+                                const allImages = getAllImages(processedSelectedArticle || selectedArticle);
                                 return allImages.length > 0 && (
                                     <div className="mb-4 space-y-3">
                                         {allImages.map((imgUrl, idx) => {
@@ -3649,6 +3605,56 @@ const ArtigosPage = () => {
         }
     }, [articles]);
 
+    // Processar artigo selecionado e extrair URLs de imagens (usando useMemo para evitar processamento no render)
+    const processedSelectedArticle = useMemo(() => {
+        if (!selectedArticle) return null;
+        
+        const htmlContent = selectedArticle.content || '';
+        const existingImages = selectedArticle?.media?.images || [];
+        const extractedUrls = [];
+        
+        // Extrair de tags <img>
+        const imgMatches = htmlContent.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi);
+        if (imgMatches) {
+            imgMatches.forEach(match => {
+                const srcMatch = match.match(/src=["']([^"']+)["']/i);
+                if (srcMatch && srcMatch[1]) {
+                    const url = srcMatch[1];
+                    if ((url.startsWith('http') || url.startsWith('data:image')) && 
+                        !url.includes('storage.googleapis.com') && 
+                        !url.includes('.run.app/api/images/')) {
+                        if (!extractedUrls.includes(url)) {
+                            extractedUrls.push(url);
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Extrair URLs base64 soltas
+        const base64Matches = htmlContent.match(/data:image\/[^;]+;base64,[^\s<>"']+/gi);
+        if (base64Matches) {
+            base64Matches.forEach(url => {
+                if (!extractedUrls.includes(url)) {
+                    extractedUrls.push(url);
+                }
+            });
+        }
+        
+        // Retornar artigo com URLs extraídas
+        if (extractedUrls.length > 0) {
+            return {
+                ...selectedArticle,
+                media: {
+                    ...selectedArticle.media,
+                    images: [...existingImages, ...extractedUrls]
+                }
+            };
+        }
+        
+        return selectedArticle;
+    }, [selectedArticle]);
+    
     // Debounce para o termo de busca
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -3954,7 +3960,7 @@ const ArtigosPage = () => {
                             
                             {/* Renderizar todas as imagens */}
                             {(() => {
-                                const allImages = getAllImages(selectedArticle);
+                                const allImages = getAllImages(processedSelectedArticle || selectedArticle);
                                 return allImages.length > 0 && (
                                     <div className="mb-6 space-y-3">
                                         {allImages.map((imgUrl, idx) => {
