@@ -77,18 +77,31 @@ if (process.env.MONGO_ENV) {
   console.warn('⚠️ Verifique se backend/env existe e contém MONGO_ENV');
 }
 
-// Carregar configuração local para testes (apenas se variáveis não estiverem definidas)
-const localConfig = require('./config-local');
-
 // Importar serviços do chatbot
 // VERSION: v2.19.0 | DATE: 2025-01-10 | AUTHOR: VeloHub Development Team
 // Serviços serão carregados DEPOIS do servidor iniciar (não bloqueia startup)
 let aiService, searchService, sessionService, dataCache, userActivityLogger, botFeedbackService, responseFormatter, userSessionLogger;
+let localConfig, config;
 
-// Função para carregar serviços em background (não bloqueia startup)
+// Função para carregar serviços e configs em background (não bloqueia startup)
 const loadServices = () => {
   try {
-    console.log('📦 Carregando serviços em background...');
+    console.log('📦 Carregando serviços e configs em background...');
+    
+    // Carregar configs
+    try {
+      localConfig = require('./config-local');
+    } catch (e) {
+      console.warn('⚠️ config-local não encontrado, continuando...');
+    }
+    
+    try {
+      config = require('./config');
+    } catch (e) {
+      console.warn('⚠️ config não encontrado, continuando...');
+    }
+    
+    // Carregar serviços
     aiService = require('./services/chatbot/aiService');
     searchService = require('./services/chatbot/searchService');
     sessionService = require('./services/chatbot/sessionService');
@@ -103,9 +116,6 @@ const loadServices = () => {
     console.error('⚠️ Continuando sem alguns serviços (modo degradado)');
   }
 };
-
-// Carregar config para verificação de configurações WhatsApp
-const config = require('./config');
 
 // Log de configurações WhatsApp (apenas em desenvolvimento)
 if (process.env.NODE_ENV === 'development') {
