@@ -673,11 +673,12 @@ app.get('/api/articles', async (req, res) => {
         content: parseTextContent(item.artigo_conteudo || ''),
         category: item.categoria_titulo,
         media: media, // ✅ Campo media com images e videos
-      category_id: item.categoria_id,
-      tag: item.tag,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt
-    }));
+        category_id: item.categoria_id,
+        tag: item.tag,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt
+      };
+    });
     
     res.json({
       success: true,
@@ -2525,10 +2526,9 @@ app.get('/api/velo-news/acknowledgments/:userEmail', async (req, res) => {
 
 // Iniciar servidor IMEDIATAMENTE (sem operações síncronas que possam bloquear)
 // IMPORTANTE: Cloud Run precisa que o servidor escute na porta dentro do timeout
-console.log('🚀 INICIANDO SERVIDOR IMEDIATAMENTE...');
-console.log(`📍 Porta: ${PORT}`);
-console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+console.log('🚀 INICIANDO SERVIDOR...');
 
+// Iniciar servidor ANTES de qualquer outra coisa
 const server = app.listen(PORT, '0.0.0.0', (error) => {
   if (error) {
     console.error('❌ Erro ao iniciar servidor:', error);
@@ -2537,6 +2537,8 @@ const server = app.listen(PORT, '0.0.0.0', (error) => {
   
   // LOG CRÍTICO: Servidor está escutando (Cloud Run precisa ver isso)
   console.log(`✅✅✅ SERVIDOR ESCUTANDO NA PORTA ${PORT} ✅✅✅`);
+  console.log(`📍 Porta: ${PORT}`);
+  console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
   
   // Logs de diagnóstico após servidor iniciar (não bloqueia startup)
   setTimeout(() => {
