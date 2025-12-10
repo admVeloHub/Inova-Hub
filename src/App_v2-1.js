@@ -1054,13 +1054,12 @@ const getAllImages = (item) => {
 
 // Função para processar conteúdo HTML e remover URLs do bucket GCS
 // Substitui URLs do bucket por endpoint local e remove metadados visíveis
-// Para artigos HTML (isHtmlArticle=true): preserva tags <img> e apenas processa URLs
-// Para artigos da API (isHtmlArticle=false): remove tags <img> e renderiza via getAllImages
-const processContentHtml = (htmlContent, mediaImages = [], isHtmlArticle = false) => {
+// IMPORTANTE: Remove todas as tags <img> do HTML (seguindo padrão Velonews)
+// As imagens devem estar em media.images e são renderizadas separadamente via getAllImages()
+const processContentHtml = (htmlContent, mediaImages = []) => {
   if (!htmlContent || typeof htmlContent !== 'string') return htmlContent || '';
   
   console.log('🔍 processContentHtml - ANTES:', htmlContent.substring(0, 200));
-  console.log('🔍 processContentHtml - isHtmlArticle:', isHtmlArticle);
   
   let processedHtml = htmlContent;
   
@@ -1084,45 +1083,19 @@ const processContentHtml = (htmlContent, mediaImages = [], isHtmlArticle = false
   });
   
   // 2. Processar tags <img> existentes que contenham URLs do bucket
-  // Para artigos HTML: apenas substituir URLs, preservando a tag <img>
-  // Para artigos da API: remover completamente as tags <img> (renderizadas via getAllImages)
-  if (isHtmlArticle) {
-    // Para artigos HTML: substituir URL mas manter a tag <img>
-    processedHtml = processedHtml.replace(/<img([^>]*src=["'])(https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^"']+|img_artigos\/[^"']+))([^>]*)>/gi, (match, beforeSrc, bucketUrl, afterAttrs) => {
-      const pathMatch = bucketUrl.match(/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/);
-      if (pathMatch) {
-        const cleanPath = pathMatch[1];
-        const encodedPath = cleanPath.split('/').map(part => encodeURIComponent(part)).join('/');
-        const newUrl = `${API_BASE_URL}/images/${encodedPath}`;
-        // Substituir URL mas manter a tag <img>
-        return `<img${beforeSrc}${newUrl}"${afterAttrs}>`;
-      }
-      return match;
-    });
-    
-    // 2b. Processar tags <img> que contenham URLs do Cloud Run (para artigos HTML)
-    processedHtml = processedHtml.replace(/<img([^>]*src=["'])(https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^"']+|img_artigos\/[^"']+))([^>]*)>/gi, (match, beforeSrc, cloudRunUrl, afterAttrs) => {
-      const pathMatch = cloudRunUrl.match(/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/);
-      if (pathMatch) {
-        const cleanPath = pathMatch[1];
-        const encodedPath = cleanPath.split('/').map(part => encodeURIComponent(part)).join('/');
-        const newUrl = `${API_BASE_URL}/images/${encodedPath}`;
-        // Substituir URL mas manter a tag <img>
-        return `<img${beforeSrc}${newUrl}"${afterAttrs}>`;
-      }
-      return match;
-    });
-  } else {
-    // Para artigos da API: remover completamente as tags <img> (renderizadas via getAllImages)
-    processedHtml = processedHtml.replace(/<img([^>]*src=["'])(https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^"']+|img_artigos\/[^"']+))([^>]*)>/gi, () => {
-      return '';
-    });
-    
-    // 2b. Processar tags <img> que contenham URLs do Cloud Run (para artigos da API)
-    processedHtml = processedHtml.replace(/<img([^>]*src=["'])(https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^"']+|img_artigos\/[^"']+))([^>]*)>/gi, () => {
-      return '';
-    });
-  }
+  // IMPORTANTE: Remover completamente as tags <img> do HTML, pois as imagens são renderizadas separadamente via getAllImages
+  // Isso se aplica tanto para artigos HTML quanto para artigos da API (padrão Velonews)
+  processedHtml = processedHtml.replace(/<img([^>]*src=["'])(https:\/\/storage\.googleapis\.com\/[^\/]+\/(img_velonews\/[^"']+|img_artigos\/[^"']+))([^>]*)>/gi, () => {
+    // Remover completamente a tag <img> - a imagem será renderizada separadamente via getAllImages
+    return '';
+  });
+  
+  // 2b. Processar tags <img> que contenham URLs do Cloud Run
+  // IMPORTANTE: Remover completamente as tags <img> do HTML, pois as imagens são renderizadas separadamente via getAllImages
+  processedHtml = processedHtml.replace(/<img([^>]*src=["'])(https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^"']+|img_artigos\/[^"']+))([^>]*)>/gi, () => {
+    // Remover completamente a tag <img> - a imagem será renderizada separadamente via getAllImages
+    return '';
+  });
   
   // 3. Substituir URLs do bucket em texto simples (caso apareçam como links)
   processedHtml = processedHtml.replace(bucketUrlPattern, (match, imagePath) => {
@@ -1145,22 +1118,14 @@ const processContentHtml = (htmlContent, mediaImages = [], isHtmlArticle = false
   processedHtml = processedHtml.replace(/https:\/\/[^\/]+\.run\.app\/api\/images\/(img_velonews\/[^\s\)]+|img_artigos\/[^\s\)]+)/g, '');
   
   // 5. Processar HTML escapado (quando o HTML aparece como texto)
-  // Para artigos HTML: desescapar e substituir URLs
-  // Para artigos da API: remover completamente se for do bucket/Cloud Run
+  // Se encontrar tags HTML escapadas como &lt;img, remover completamente se for do bucket/Cloud Run
   processedHtml = processedHtml.replace(/&lt;img([^&]*?)src=["']([^"']+)["']([^&]*?)&gt;/gi, (match, beforeSrc, srcUrl, afterAttrs) => {
+    // Se a URL for do bucket ou Cloud Run, remover completamente (imagem será renderizada separadamente)
     if (srcUrl.includes('storage.googleapis.com') || srcUrl.includes('.run.app/api/images/')) {
       const pathMatch = srcUrl.match(/(img_velonews\/[^"'\s\)]+|img_artigos\/[^"'\s\)]+)/);
       if (pathMatch) {
-        if (isHtmlArticle) {
-          // Para artigos HTML: substituir URL mas manter a tag
-          const cleanPath = pathMatch[1];
-          const encodedPath = cleanPath.split('/').map(part => encodeURIComponent(part)).join('/');
-          const newUrl = `${API_BASE_URL}/images/${encodedPath}`;
-          return `<img${beforeSrc}src="${newUrl}"${afterAttrs}>`;
-        } else {
-          // Para artigos da API: remover completamente
-          return '';
-        }
+        // Remover completamente a tag <img> escapada
+        return '';
       }
     }
     // Se não for do bucket, apenas desescapar (pode ser uma imagem externa válida)
@@ -1169,11 +1134,8 @@ const processContentHtml = (htmlContent, mediaImages = [], isHtmlArticle = false
   
   // 6. Remover qualquer tag <img> que contenha URLs problemáticas que possam ter escapado dos regex anteriores
   // Isso captura casos onde o HTML pode estar mal formatado ou parcialmente escapado
-  // Apenas para artigos da API (não para artigos HTML)
-  if (!isHtmlArticle) {
-    processedHtml = processedHtml.replace(/<img[^>]*src=["'][^"']*(storage\.googleapis\.com|\.run\.app\/api\/images)[^"']*["'][^>]*>/gi, '');
-    processedHtml = processedHtml.replace(/&lt;img[^&]*src=["'][^"']*(storage\.googleapis\.com|\.run\.app\/api\/images)[^"']*["'][^&]*&gt;/gi, '');
-  }
+  processedHtml = processedHtml.replace(/<img[^>]*src=["'][^"']*(storage\.googleapis\.com|\.run\.app\/api\/images)[^"']*["'][^>]*>/gi, '');
+  processedHtml = processedHtml.replace(/&lt;img[^&]*src=["'][^"']*(storage\.googleapis\.com|\.run\.app\/api\/images)[^"']*["'][^&]*&gt;/gi, '');
   
   // 7. Processar links <a> que contenham imagens do bucket/Cloud Run
   // Remover completamente links que apontam para imagens (as imagens serão renderizadas separadamente)
@@ -2048,7 +2010,7 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                                     
                                     <div 
                                         className={`text-gray-600 dark:text-gray-400 line-clamp-3 mb-2 prose prose-sm dark:prose-invert max-w-none ${isSolved ? 'solved-news-content' : ''}`}
-                                        dangerouslySetInnerHTML={{ __html: processContentHtml(news.content || '', news?.media?.images || [], false) }}
+                                        dangerouslySetInnerHTML={{ __html: processContentHtml(news.content || '', news?.media?.images || []) }}
                                     />
                                     
                                     <div className="flex justify-between items-center">
@@ -2222,7 +2184,7 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                             
                             <div 
                                 className="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
-                                dangerouslySetInnerHTML={{ __html: processContentHtml(selectedNews.content || '', selectedNews?.media?.images || [], false) }}
+                                dangerouslySetInnerHTML={{ __html: processContentHtml(selectedNews.content || '', selectedNews?.media?.images || []) }}
                             />
                         </div>
                     </div>
@@ -2379,15 +2341,16 @@ const HomePage = ({ setCriticalNews, setShowHistoryModal, setVeloNews, veloNews,
                             
                             {/* Renderizar conteúdo do artigo */}
                             {selectedArticle._id && selectedArticle._id.startsWith('artigo-') ? (
-                                // Para artigos HTML, preservar tags <img> e estrutura HTML
+                                // Para artigos HTML, processar HTML mas remover tags <img> (seguindo padrão Velonews)
+                                // As imagens são renderizadas separadamente via getAllImages()
                                 <div 
-                                    dangerouslySetInnerHTML={{ __html: processContentHtml(selectedArticle.content || '', selectedArticle?.media?.images || [], true) }}
+                                    dangerouslySetInnerHTML={{ __html: processContentHtml(selectedArticle.content || '', selectedArticle?.media?.images || []) }}
                                 />
                             ) : (
-                                // Para artigos da API, remover tags <img> e renderizar via getAllImages
+                                // Para artigos da API, usar processamento normal
                                 <div 
                                     className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
-                                    dangerouslySetInnerHTML={{ __html: processContentHtml(selectedArticle.content || '', selectedArticle?.media?.images || [], false) }}
+                                    dangerouslySetInnerHTML={{ __html: processContentHtml(selectedArticle.content || '', selectedArticle?.media?.images || []) }}
                                 />
                             )}
                         </div>
@@ -3694,7 +3657,7 @@ const ArtigosPage = () => {
                                             {article.content && (
                                                  <div 
                                                      className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 prose prose-sm dark:prose-invert max-w-none"
-                                                     dangerouslySetInnerHTML={{ __html: processContentHtml(formatArticleContent(article.content, 200), article?.media?.images || [], article?._id?.startsWith('artigo-') || false) }}
+                                                     dangerouslySetInnerHTML={{ __html: processContentHtml(formatArticleContent(article.content, 200), article?.media?.images || []) }}
                                                  />
                                             )}
                                             {article.tag && (
@@ -3849,18 +3812,17 @@ const ArtigosPage = () => {
                             
                             {/* Renderizar conteúdo do artigo */}
                             {selectedArticle._id && selectedArticle._id.startsWith('artigo-') ? (
-                                // Para artigos HTML, processar URLs do bucket mas preservar tags <img> e estrutura HTML
+                                // Para artigos HTML, processar HTML mas remover tags <img> (seguindo padrão Velonews)
                                 // O conteúdo já vem com a div .artigo-html-content dentro
-                                // isHtmlArticle=true: preserva tags <img> e apenas processa URLs
+                                // As imagens são renderizadas separadamente via getAllImages()
                                 <div 
-                                    dangerouslySetInnerHTML={{ __html: processContentHtml(selectedArticle.content, selectedArticle?.media?.images || [], true) }}
+                                    dangerouslySetInnerHTML={{ __html: processContentHtml(selectedArticle.content, selectedArticle?.media?.images || []) }}
                                 />
                             ) : (
                                 // Para artigos da API, usar processamento normal
-                                // isHtmlArticle=false: remove tags <img> e renderiza via getAllImages
                                 <div 
                                     className="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
-                                    dangerouslySetInnerHTML={{ __html: processContentHtml(formatResponseText(selectedArticle.content, 'article'), selectedArticle?.media?.images || [], false) }}
+                                    dangerouslySetInnerHTML={{ __html: processContentHtml(formatResponseText(selectedArticle.content, 'article'), selectedArticle?.media?.images || []) }}
                                 />
                             )}
                             
