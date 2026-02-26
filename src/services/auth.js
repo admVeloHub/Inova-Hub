@@ -363,27 +363,12 @@ function updateUserInfo(userData) {
     }, 100);
 }
 
-/** Ativar para pular login (local): REACT_APP_SKIP_SSO=true ou localStorage.setItem('velohub_skip_sso', 'true') */
-function shouldSkipSSO() {
-    return process.env.NODE_ENV === 'development' && (
-        process.env.REACT_APP_SKIP_SSO === 'true' ||
-        (typeof localStorage !== 'undefined' && localStorage.getItem('velohub_skip_sso') === 'true')
-    );
-}
-
 /**
  * Verifica o estado de autenticação e atualiza a UI.
  * @returns {Promise<boolean>} - true se usuário está logado, false caso contrário
  */
 async function checkAuthenticationState() {
     console.log('=== Verificando estado de autenticação ===');
-
-    if (shouldSkipSSO()) {
-        console.log('⚠️ SSO ignorado (modo local)');
-        const mockUser = { name: 'Usuário Local', email: 'local@velotax.com.br', picture: null };
-        if (!getUserSession()) saveUserSession(mockUser);
-        return true;
-    }
 
     // Verificar se há dados no localStorage (compatibilidade)
     const userEmail = localStorage.getItem('userEmail');
