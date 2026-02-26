@@ -234,6 +234,7 @@ import SupportModal from './components/SupportModal';
 import VeloChatWidget from './components/VeloChatWidget';
 import ChatStatusSelector from './components/ChatStatusSelector';
 import EscalacoesPage from './pages/EscalacoesPage';
+import MidiasPage from './pages/MidiasPage';
 import OuvidoriaPage from './pages/OuvidoriaPage';
 import OuvidoriaAccessGuard from './components/Ouvidoria/OuvidoriaAccessGuard';
 import PerfilPage from './pages/PerfilPage';
@@ -407,9 +408,9 @@ const Footer = ({ isDarkMode }) => {
   );
 };
 
-// Componente do Cabe├ºalho
+// Componente do Cabeçalho
 const Header = ({ activePage, setActivePage, isDarkMode, toggleDarkMode }) => {
-  const navItems = ['Home', 'VeloBot', 'Artigos', 'Apoio', 'Req_Prod', 'Ouvidoria', 'VeloAcademy'];
+  const navItems = ['Home', 'VeloBot', 'Artigos', 'Mídias', 'Apoio', 'Req_Prod', 'Ouvidoria', 'VeloAcademy'];
   const [unreadTicketsCount, setUnreadTicketsCount] = useState(0);
   const [userName, setUserName] = useState('Usu├írio VeloHub');
   const [userPicture, setUserPicture] = useState(null);
@@ -1496,6 +1497,8 @@ export default function App_v2() {
         return <ProcessosPage />;
       case 'Artigos':
         return <ArtigosPage />;
+      case 'Mídias':
+        return <MidiasPage />;
       case 'Apoio':
         return <ApoioPage />;
       case 'Req_Prod':

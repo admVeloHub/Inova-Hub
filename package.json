@@ -2,6 +2,7 @@
   "name": "velohub",
   "version": "3.0.3",
   "private": true,
+  "main": "backend/server.js",
   "_versionInfo": {
     "version": "v3.0.3",
     "date": "2025-01-31",
@@ -33,6 +34,7 @@
     "@types/react-dom": "^18.0.11",
     "typescript": "^4.9.5"
   },
+<<<<<<< HEAD
   "scripts": {
     "start": "node start-frontend.js",
     "build": "react-scripts build",
@@ -40,6 +42,7 @@
     "eject": "react-scripts eject",
     "backend": "cd backend && npm start",
     "backend:dev": "cd backend && npm run dev",
+    "planilha-mongo": "node backend/scripts/export-mongo-to-planilha.js",
     "test:config": "node test-config.js",
     "lint": "eslint src/ --ext .js,.jsx",
     "lint:fix": "eslint src/ --ext .js,.jsx --fix"
@@ -59,7 +62,6 @@
   "overrides": {
     "typescript": "^4.9.5"
   },
-  "description": "VeloHub V3 - Portal de Processos Inteligente com Chatbot IA",
   "keywords": [
     "velohub",
     "chatbot",
@@ -77,7 +79,7 @@
     "url": "https://github.com/velohub/velohub-v3.git"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
   }
 }

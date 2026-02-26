@@ -1,6 +1,7 @@
 // Bot Feedback Service - Sistema de feedback do chatbot no MongoDB
 // VERSION: v1.0.0 | DATE: 2024-12-19 | AUTHOR: VeloHub Development Team
 const { MongoClient } = require('mongodb');
+const { getMongoUri } = require('../../config/mongodb');
 require('dotenv').config();
 
 class BotFeedbackService {
@@ -18,7 +19,7 @@ class BotFeedbackService {
     if (this.isConnected) return;
 
     try {
-      this.client = new MongoClient(process.env.MONGO_ENV);
+      this.client = new MongoClient(getMongoUri());
       await this.client.connect();
       this.db = this.client.db('console_conteudo');
       this.collection = this.db.collection('bot_feedback');
