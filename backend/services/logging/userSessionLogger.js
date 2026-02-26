@@ -12,6 +12,7 @@
 // - Se chatStatus não existe, usa 'online' como padrão apenas na primeira vez
 const { MongoClient } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
+const { getMongoUri } = require('../../config/mongodb');
 require('dotenv').config();
 
 class UserSessionLogger {
@@ -23,13 +24,14 @@ class UserSessionLogger {
   }
 
   /**
-   * Conecta ao MongoDB
+   * Conecta ao MongoDB (usa MONGODB_URI ou MONGO_ENV)
    */
   async connect() {
     if (this.isConnected) return;
     
     try {
-      this.client = new MongoClient(process.env.MONGO_ENV);
+      const uri = getMongoUri();
+      this.client = new MongoClient(uri);
       await this.client.connect();
       this.db = this.client.db('console_conteudo');
       this.collection = this.db.collection('hub_sessions');

@@ -1,3 +1,6 @@
+# Clone local do BacenN2 (não versionar)
+BacenN2-restore/
+
 # Dependencies
 node_modules/
 backend/node_modules/
